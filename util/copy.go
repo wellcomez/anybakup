@@ -25,7 +25,7 @@ func CopyToRepo(src string) (string, error) {
 	}
 
 	// Create destination path by appending src path (without leading /) to repo dir
-	dest := filepath.Join(conf.RepoDir, src[1:])
+	dest := conf.RepoDir.With(src[1:])
 
 	// Copy based on whether src is a file or directory
 	if srcInfo.IsDir() {

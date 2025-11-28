@@ -14,14 +14,14 @@ func repo_root() (string, error) {
 	if err := conf.Load(); err != nil {
 		return "", fmt.Errorf("git repo %v", err)
 	}
-	st, err := os.Stat(conf.RepoDir)
+	st, err := os.Stat(conf.RepoDir.String())
 	if err != nil {
 		return "", fmt.Errorf("git repo %v %v", err, conf.RepoDir)
 	}
 	if !st.IsDir() {
 		return "", fmt.Errorf("git repo %v is not a directory", conf.RepoDir)
 	}
-	return conf.RepoDir, nil
+	return conf.RepoDir.String(), nil
 }
 func Initgit() error {
 	dir, err := repo_root()

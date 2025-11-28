@@ -14,7 +14,7 @@ func add_file(file string)error{
 	if err!=nil{
 		return err
 	}
-	fmt.Printf("Added %s to repository\n", dest)
+	fmt.Printf("Added %s -> %s to repository\n",file, dest)
 	return nil
 }
 // addCmd represents the add command

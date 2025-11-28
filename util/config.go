@@ -8,10 +8,18 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
+type RepoRoot string
 type Config struct {
-	RepoDir string `yaml:"repodir"`
+	RepoDir RepoRoot `yaml:"repodir"`
 }
 
+func (r RepoRoot) String() string {
+	return string(r)
+}
+func (r RepoRoot) With(s string) string {
+	ret := fmt.Sprintf("%s/%s", r.String(), s)
+	return ret
+}
 func (c *Config) String() string {
 	return ""
 }

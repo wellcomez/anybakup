@@ -3,20 +3,10 @@ package cmd
 import (
 	"anybakup/util"
 	"fmt"
+	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
-
-	"github.com/go-git/go-git/v5"
-	"github.com/spf13/cobra"
 )
-
-func initgit(dir string) error {
-	_, err := git.PlainInit(dir, false)
-	if err != nil {
-		return err
-	}
-	return nil
-}
 
 // initCmd represents the init command
 var initCmd = &cobra.Command{
@@ -39,16 +29,16 @@ var initCmd = &cobra.Command{
 		}
 		fmt.Printf("Initialized empty repository in %s\n", absPath)
 
-		// Initialize git repository
-		if err := util.Initgit(); err != nil {
-			fmt.Printf("Error initializing git repository: %v\n", err)
-			os.Exit(1)
-		}
 		c := util.Config{
-			RepoDir: absPath,
+			RepoDir: util.RepoRoot(absPath),
 		}
 		if err := c.Save(); err != nil {
 			fmt.Printf("Error saving config: %v\n", err)
+			os.Exit(1)
+		}
+		// Initialize git repository
+		if err := util.Initgit(); err != nil {
+			fmt.Printf("Error initializing git repository: %v\n", err)
 			os.Exit(1)
 		}
 
