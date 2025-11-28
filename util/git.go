@@ -50,6 +50,9 @@ func NewGitReop() (*GitRepo, error) {
 	if err := ret.load(); err != nil {
 		return nil, err
 	}
+	if err := ret.Init(); err != nil {
+		return nil, err
+	}
 	if r, err := ret.Open(); err != nil {
 		return nil, err
 	} else {
@@ -69,14 +72,16 @@ func (r GitRepo) Open() (*git.Repository, error) {
 	return git, nil
 }
 
-func Initgit() error {
-	repo, err := NewGitReop()
-	if err != nil {
-		return fmt.Errorf("init git repo %v", err)
+func (r GitRepo) Init() error {
+	if _, err := os.Stat(r.root); err != nil {
+		return fmt.Errorf("git repo %v already exists", r.root)
 	}
-	_, err = git.PlainInit(repo.root, false)
+	if _, err := os.Stat(filepath.Join(r.root, ".git")); err == nil {
+		return nil
+	}
+	_, err := git.PlainInit(r.root, false)
 	if err != nil {
-		return fmt.Errorf("init git repo %v %v", err, repo.root)
+		return fmt.Errorf("init git repo %v %v", err, r.root)
 	}
 	return nil
 }
@@ -109,6 +114,7 @@ func (r GitRepo) GitAddFile(file string) error {
 	}
 	return nil
 }
+
 // GitDiffFile compares a file between working directory and HEAD commit
 // Returns the diff as a string, or empty string if no changes
 func (r GitRepo) GitDiffFile(file string) (string, error) {

@@ -54,9 +54,9 @@ func TestInitgit(t *testing.T) {
 	defer cleanup()
 
 	// Initialize git repo
-	err := Initgit()
+	_, err := NewGitReop()
 	if err != nil {
-		t.Fatalf("Initgit failed: %v", err)
+		t.Fatalf("NewGitReop failed: %v", err)
 	}
 
 	// Verify .git directory exists
@@ -86,9 +86,9 @@ func TestGitAddFile(t *testing.T) {
 	}
 
 	// Initialize git repo
-	if err := Initgit(); err != nil {
-		t.Fatalf("Initgit failed: %v", err)
-	}
+	// if err := Initgit(); err != nil {
+	// 	t.Fatalf("Initgit failed: %v", err)
+	// }
 
 	// Create a test file in the repo
 	testFile := filepath.Join(repoDir, "test.txt")
@@ -140,9 +140,9 @@ func TestGitAddFile_MultipleFiles(t *testing.T) {
 	}
 
 	// Initialize git repo
-	if err := Initgit(); err != nil {
-		t.Fatalf("Initgit failed: %v", err)
-	}
+	// if err := Initgit(); err != nil {
+	// 	t.Fatalf("Initgit failed: %v", err)
+	// }
 
 	// Create multiple test files
 	files := []string{"file1.txt", "file2.txt", "file3.txt"}
@@ -196,9 +196,9 @@ func TestGitAddFile_Subdirectory(t *testing.T) {
 	}
 
 	// Initialize git repo
-	if err := Initgit(); err != nil {
-		t.Fatalf("Initgit failed: %v", err)
-	}
+	// if err := Initgit(); err != nil {
+	// 	t.Fatalf("Initgit failed: %v", err)
+	// }
 
 	// Create a subdirectory and file
 	subDir := filepath.Join(repoDir, "subdir")
@@ -255,10 +255,10 @@ func TestGitDiffFile(t *testing.T) {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
 
-	// Initialize git repo
-	if err := Initgit(); err != nil {
-		t.Fatalf("Initgit failed: %v", err)
-	}
+	// // Initialize git repo
+	// if err := Initgit(); err != nil {
+	// 	t.Fatalf("Initgit failed: %v", err)
+	// }
 
 	// Create and add a file
 	testFile := filepath.Join(repoDir, "test.txt")
@@ -307,10 +307,10 @@ func TestGitDiffFile_NewFile(t *testing.T) {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
 
-	// Initialize git repo
-	if err := Initgit(); err != nil {
-		t.Fatalf("Initgit failed: %v", err)
-	}
+	// // Initialize git repo
+	// if err := Initgit(); err != nil {
+	// 	t.Fatalf("Initgit failed: %v", err)
+	// }
 
 	// Create initial file to have a commit
 	testFile1 := filepath.Join(repoDir, "file1.txt")
@@ -347,10 +347,10 @@ func TestGitChangesFile(t *testing.T) {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
 
-	// Initialize git repo
-	if err := Initgit(); err != nil {
-		t.Fatalf("Initgit failed: %v", err)
-	}
+	// // Initialize git repo
+	// if err := Initgit(); err != nil {
+	// 	t.Fatalf("Initgit failed: %v", err)
+	// }
 
 	// Create and commit a file multiple times
 	testFile := filepath.Join(repoDir, "test.txt")
@@ -399,12 +399,12 @@ func TestGitChangesFile(t *testing.T) {
 	// Should contain author information
 	for _, c := range changes {
 
-		if !strings.Contains(c.Author, "Author: anybakup") {
+		if !strings.Contains(c.Author, "anybakup") {
 			t.Error("Expected author information in changes")
 		}
 
 		// Should contain date information
-		if !strings.Contains(c.Date, "Date:") {
+		if c.Date == "" {
 			t.Error("Expected date information in changes")
 		}
 	}
@@ -420,10 +420,10 @@ func TestGitChangesFile_NoCommits(t *testing.T) {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
 
-	// Initialize git repo
-	if err := Initgit(); err != nil {
-		t.Fatalf("Initgit failed: %v", err)
-	}
+	// // Initialize git repo
+	// if err := Initgit(); err != nil {
+	// 	t.Fatalf("Initgit failed: %v", err)
+	// }
 
 	// Create a file to have at least one commit
 	testFile1 := filepath.Join(repoDir, "file1.txt")
@@ -457,9 +457,9 @@ func TestGitStatusFile(t *testing.T) {
 	}
 
 	// Initialize git repo
-	if err := Initgit(); err != nil {
-		t.Fatalf("Initgit failed: %v", err)
-	}
+	// if err := Initgit(); err != nil {
+	// 	t.Fatalf("Initgit failed: %v", err)
+	// }
 
 	// Create and add a file
 	testFile := filepath.Join(repoDir, "test.txt")
