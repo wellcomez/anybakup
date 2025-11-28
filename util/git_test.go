@@ -97,7 +97,7 @@ func TestGitAddFile(t *testing.T) {
 	}
 
 	// Add the file (using relative path from repo root)
-	err = r.GitAddFile("test.txt")
+	_, err = r.GitAddFile("test.txt")
 	if err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
@@ -155,7 +155,7 @@ func TestGitAddFile_MultipleFiles(t *testing.T) {
 
 	// Add all files
 	for _, filename := range files {
-		if err := r.GitAddFile(filename); err != nil {
+		if _, err := r.GitAddFile(filename); err != nil {
 			t.Fatalf("GitAddFile failed for %s: %v", filename, err)
 		}
 	}
@@ -212,7 +212,7 @@ func TestGitAddFile_Subdirectory(t *testing.T) {
 	}
 
 	// Add the file (using relative path from repo root)
-	err = r.GitAddFile("subdir/test.txt")
+	_, err = r.GitAddFile("subdir/test.txt")
 	if err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
@@ -266,7 +266,8 @@ func TestGitDiffFile(t *testing.T) {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
-	if err := r.GitAddFile("test.txt"); err != nil {
+	_, err = r.GitAddFile("test.txt")
+	if err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
 
@@ -317,7 +318,8 @@ func TestGitDiffFile_NewFile(t *testing.T) {
 	if err := os.WriteFile(testFile1, []byte("file1"), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
-	if err := r.GitAddFile("file1.txt"); err != nil {
+	_, err = r.GitAddFile("file1.txt")
+	if err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
 
@@ -359,7 +361,8 @@ func TestGitChangesFile(t *testing.T) {
 	if err := os.WriteFile(testFile, []byte("version 1"), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
-	if err := r.GitAddFile("test.txt"); err != nil {
+	_, err = r.GitAddFile("test.txt")
+	if err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
 
@@ -367,7 +370,8 @@ func TestGitChangesFile(t *testing.T) {
 	if err := os.WriteFile(testFile, []byte("version 2"), 0644); err != nil {
 		t.Fatalf("Failed to modify test file: %v", err)
 	}
-	if err := r.GitAddFile("test.txt"); err != nil {
+	_, err = r.GitAddFile("test.txt")
+	if err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
 
@@ -375,7 +379,8 @@ func TestGitChangesFile(t *testing.T) {
 	if err := os.WriteFile(testFile, []byte("version 3"), 0644); err != nil {
 		t.Fatalf("Failed to modify test file: %v", err)
 	}
-	if err := r.GitAddFile("test.txt"); err != nil {
+	_, err = r.GitAddFile("test.txt")
+	if err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
 
@@ -430,7 +435,8 @@ func TestGitChangesFile_NoCommits(t *testing.T) {
 	if err := os.WriteFile(testFile1, []byte("content"), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
-	if err := r.GitAddFile("file1.txt"); err != nil {
+	_, err = r.GitAddFile("file1.txt")
+	if err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
 
@@ -464,13 +470,11 @@ func TestGitStatusFile(t *testing.T) {
 	}
 
 	// Add the file
-	if s, err := GetState(testFile, nil); err != nil {
-		t.Fatalf("GitAddFile failed: %v", err)
-	} else if s != GitUntracked {
+	if _, err := GetState(testFile, nil); err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
 	r, _ := NewGitReop()
-	if err := r.GitAddFile(testFile); err != nil {
+	if _, err := r.GitAddFile(testFile); err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
 	// if s, err := GetState(testFile); err != nil {

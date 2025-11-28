@@ -16,9 +16,12 @@ func add_file(file string) (string, error) {
 	}
 	if repo, err := util.NewGitReop(); err != nil {
 		return dest, err
-	} else {
-		return dest, repo.GitAddFile(dest)
+	} else if yes, err := repo.GitAddFile(dest); err != nil {
+		return dest, err
+	} else if !yes {
+		return dest, fmt.Errorf("no change")
 	}
+	return dest, nil
 }
 
 // addCmd represents the add command

@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/plumbing/object"
 )
 
 type GitRepo struct {
@@ -85,22 +85,31 @@ func (r GitRepo) Init() error {
 	}
 	return nil
 }
-func (r GitRepo) GitAddFile(file string) error {
+func (r GitRepo) GitAddFile(file string) (bool, error) {
+	add := false
 	repo, err := r.Open()
 	if err != nil {
-		return fmt.Errorf("git add %v", err)
+		return add, fmt.Errorf("git add %v", err)
 	}
 	w, err := repo.Worktree()
 	if err != nil {
-		return fmt.Errorf("git add %v %v", err, file)
+		return add, fmt.Errorf("git add %v %v", err, file)
 	}
 	gitfile, err := r.rel(file)
 	if err != nil {
-		return fmt.Errorf("git add %v %v", err, file)
+		return add, fmt.Errorf("git add %v %v", err, file)
 	}
+	state, _ := GetState(gitfile, nil)
+	fmt.Printf("%-10s add %-50s %v\n", "before", file, state)
 	_, err = w.Add(gitfile)
+	state, _ = GetState(gitfile, nil)
 	if err != nil {
-		return fmt.Errorf("git add %v %v", err, file)
+		return add, fmt.Errorf("git add %v %v", err, file)
+	}
+	fmt.Printf("%-10s add %-50s %v\n", "after", file, state)
+	yes := state == GitAdded || state == GitUnmodified
+	if !yes {
+		return add, fmt.Errorf("no change")
 	}
 	msg := fmt.Sprintf("ADD %v", file)
 	_, err = w.Commit(msg, &git.CommitOptions{
@@ -110,9 +119,10 @@ func (r GitRepo) GitAddFile(file string) error {
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("git add %v %v", err, file)
+		return add, fmt.Errorf("git commit %v %v", err, file)
 	}
-	return nil
+	add = true
+	return add, nil
 }
 
 // GitDiffFile compares a file between working directory and HEAD commit
