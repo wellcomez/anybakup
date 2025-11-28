@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 
 	"github.com/go-git/go-git/v5"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -41,16 +40,16 @@ var initCmd = &cobra.Command{
 		fmt.Printf("Initialized empty repository in %s\n", absPath)
 
 		// Initialize git repository
-		if err := initgit(absPath); err != nil {
+		if err := util.Initgit(); err != nil {
 			fmt.Printf("Error initializing git repository: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Printf("Git repository initialized in %s\n", absPath)
-		a :=util.Config{
+		c := util.Config{
 			RepoDir: absPath,
 		}
-		if err := a.Save(); err != nil {
-			logrus.Error(err)
+		if err := c.Save(); err != nil {
+			fmt.Printf("Error saving config: %v\n", err)
+			os.Exit(1)
 		}
 
 	},
