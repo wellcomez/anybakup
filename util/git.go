@@ -12,6 +12,7 @@ import (
 
 type GitRepo struct {
 	root string
+	repo *git.Repository
 }
 
 func (r GitRepo) rel(s string) (string, error) {
@@ -49,10 +50,18 @@ func NewGitReop() (*GitRepo, error) {
 	if err := ret.load(); err != nil {
 		return nil, err
 	}
+	if r, err := ret.Open(); err != nil {
+		return nil, err
+	} else {
+		ret.repo = r
+	}
 	return ret, nil
 }
 
 func (r GitRepo) Open() (*git.Repository, error) {
+	if r.repo != nil {
+		return r.repo, nil
+	}
 	git, err := git.PlainOpen(r.root)
 	if err != nil {
 		return nil, fmt.Errorf("open git repo %v %v", err, r.root)
@@ -100,84 +109,134 @@ func (r GitRepo) GitAddFile(file string) error {
 	}
 	return nil
 }
-
-type GitStatusFile struct {
-	status   git.Status
-	cleand   bool
-	reporoot *GitRepo
-}
-
-func (s *GitStatusFile) CheckStatus() error {
-	if s.reporoot == nil {
-		var err error
-		s.reporoot, err = NewGitReop()
-		if err != nil {
-			return fmt.Errorf("status file %v", err)
-		}
-	}
-	dir := s.reporoot.root
-	repo, err := git.PlainOpen(dir)
+// GitDiffFile compares a file between working directory and HEAD commit
+// Returns the diff as a string, or empty string if no changes
+func (r GitRepo) GitDiffFile(file string) (string, error) {
+	repo, err := r.Open()
 	if err != nil {
-		return fmt.Errorf("status file %v %v", err, dir)
+		return "", fmt.Errorf("git diff %v", err)
 	}
+
+	gitfile, err := r.rel(file)
+	if err != nil {
+		return "", fmt.Errorf("git diff %v %v", err, file)
+	}
+
+	// Get HEAD commit
+	ref, err := repo.Head()
+	if err != nil {
+		return "", fmt.Errorf("git diff: failed to get HEAD: %v", err)
+	}
+
+	commit, err := repo.CommitObject(ref.Hash())
+	if err != nil {
+		return "", fmt.Errorf("git diff: failed to get commit: %v", err)
+	}
+
+	// Get the tree from HEAD commit
+	headTree, err := commit.Tree()
+	if err != nil {
+		return "", fmt.Errorf("git diff: failed to get tree: %v", err)
+	}
+
+	// Get worktree
 	w, err := repo.Worktree()
 	if err != nil {
-		return fmt.Errorf("status file %v %v", err, dir)
+		return "", fmt.Errorf("git diff: failed to get worktree: %v", err)
 	}
+
+	// Get current worktree status
 	status, err := w.Status()
 	if err != nil {
-		return fmt.Errorf("status file %v %v", err, dir)
+		return "", fmt.Errorf("git diff: failed to get status: %v", err)
 	}
-	s.status = status
-	s.cleand = status.IsClean()
-	return nil
+
+	// Check if file has changes
+	fileStatus := status.File(gitfile)
+	if fileStatus.Worktree == git.Unmodified && fileStatus.Staging == git.Unmodified {
+		return "", nil // No changes
+	}
+
+	// Get file content from HEAD
+	headFile, err := headTree.File(gitfile)
+	var headContent string
+	if err == nil {
+		headContent, err = headFile.Contents()
+		if err != nil {
+			return "", fmt.Errorf("git diff: failed to read HEAD content: %v", err)
+		}
+	} else {
+		// File doesn't exist in HEAD (new file)
+		headContent = ""
+	}
+
+	// Get file content from working directory
+	absPath := filepath.Join(r.root, gitfile)
+	workingContent, err := os.ReadFile(absPath)
+	if err != nil {
+		return "", fmt.Errorf("git diff: failed to read working file: %v", err)
+	}
+
+	// Simple diff representation
+	diff := fmt.Sprintf("--- a/%s\n+++ b/%s\n", gitfile, gitfile)
+	if headContent != string(workingContent) {
+		diff += "@@ File changed @@\n"
+		diff += fmt.Sprintf("- HEAD: %d bytes\n", len(headContent))
+		diff += fmt.Sprintf("+ Working: %d bytes\n", len(workingContent))
+	}
+
+	return diff, nil
 }
-func GitCommitFile(file string) error {
-	reporoot, err := NewGitReop()
+
+type GitChanges struct {
+	Commit  string
+	Author  string
+	Date    string
+	Message string
+}
+
+// GitChangesFile retrieves the commit history for a specific file
+// Returns a formatted string with commit logs
+func (r GitRepo) GitChangesFile(file string) ([]GitChanges, error) {
+	repo, err := r.Open()
 	if err != nil {
-		return fmt.Errorf("commit file %v", err)
+		return nil, fmt.Errorf("git changes %v", err)
 	}
-	dir := reporoot.root
-	repo, err := git.PlainOpen(dir)
+	gitfile, err := r.rel(file)
 	if err != nil {
-		return fmt.Errorf("commit file %v %v", err, dir)
+		return nil, fmt.Errorf("git changes %v %v", err, file)
 	}
-	w, err := repo.Worktree()
-	if err != nil {
-		return fmt.Errorf("commit file %v %v", err, dir)
-	}
-	_, err = w.Commit("commit file", &git.CommitOptions{
-		Author: &object.Signature{
-			Name: "anybakup",
-			When: time.Now(),
-		},
+
+	// Get commit log with file path filter
+	commitIter, err := repo.Log(&git.LogOptions{
+		FileName: &gitfile,
 	})
 	if err != nil {
-		return fmt.Errorf("commit file %v %v", err, file)
+		return nil, fmt.Errorf("git changes: failed to get log: %v", err)
 	}
-	return nil
-}
 
-func GitDiffFile(file string) error {
-	reporoot, err := NewGitReop()
-	if err != nil {
-		return fmt.Errorf("diff file %v", err)
-	}
-	dir := reporoot.root
-	repo, err := git.PlainOpen(dir)
-	if err != nil {
-		return fmt.Errorf("diff file %v %v", err, dir)
-	}
-	w, err := repo.Worktree()
-	if err != nil {
-		return fmt.Errorf("diff file %v %v", err, dir)
-	}
-	status, err := w.Status()
-	if err != nil {
-		return fmt.Errorf("diff file %v %v", err, file)
-	}
-	if status.IsClean() {
+	commitCount := 0
+	ret := []GitChanges{}
+	// Iterate through commits
+	err = commitIter.ForEach(func(c *object.Commit) error {
+		commitCount++
+		r := GitChanges{
+			Commit:  c.Hash.String()[:7],
+			Author:  c.Author.Name,
+			Date:    c.Author.When.Format("2006-01-02 15:04:05"),
+			Message: c.Message,
+		}
+		ret = append(ret, r)
 		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("git changes: failed to iterate commits: %v", err)
 	}
-	return nil
+
+	if commitCount == 0 {
+		return nil, fmt.Errorf("no commits found for file: %s", gitfile)
+	}
+
+	return ret, nil
 }

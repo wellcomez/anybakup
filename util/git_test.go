@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/go-git/go-git/v5"
@@ -72,38 +73,17 @@ func TestInitgit(t *testing.T) {
 
 	// Verify it's a valid git repository
 	repo.Head()
-	// // It's OK if there's no HEAD yet (empty repo), but other errors are bad
-	// if err != nil && err != git.e{
-	// 	t.Fatalf("Invalid git repository: %v", err)
-	// }
 }
-
-// TestInitgit_AlreadyInitialized tests initializing an already initialized repo
-// func TestInitgit_AlreadyInitialized(t *testing.T) {
-// 	_, cleanup := setupGitTestEnv(t)
-// 	defer cleanup()
-
-// 	// Initialize git repo twice
-// 	if err := Initgit(); err != nil {
-// 		t.Fatalf("First Initgit failed: %v", err)
-// 	}
-
-// 	// Second init should handle gracefully (go-git returns error for already initialized)
-// 	err := Initgit()
-// 	// go-git returns an error if repo is already initialized, which is expected
-// 	if err == nil {
-// 		t.Log("Note: Initgit allowed re-initialization (this may be OK)")
-// 	}
-// }
 
 // TestGitAddFile tests adding and committing a file
 func TestGitAddFile(t *testing.T) {
 	repoDir, cleanup := setupGitTestEnv(t)
+	defer cleanup()
+
 	r, err := NewGitReop()
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
-	defer cleanup()
 
 	// Initialize git repo
 	if err := Initgit(); err != nil {
@@ -122,15 +102,11 @@ func TestGitAddFile(t *testing.T) {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
 
-	// // Verify the file was committed
-	// repo, err := git.PlainOpen(repoDir)
-	// if err != nil {
-	// 	t.Fatalf("Failed to open repo: %v", err)
-	// }
 	repo, err := r.Open()
 	if err != nil {
 		t.Fatalf("Failed to open repo: %v", err)
 	}
+
 	// Get the HEAD commit
 	ref, err := repo.Head()
 	if err != nil {
@@ -144,7 +120,7 @@ func TestGitAddFile(t *testing.T) {
 
 	// Verify commit message
 	if commit.Message != fmt.Sprintf("ADD %s", "test.txt") {
-		t.Errorf("Expected commit message 'add file', got %q", commit.Message)
+		t.Errorf("Expected commit message 'ADD test.txt', got %q", commit.Message)
 	}
 
 	// Verify author
@@ -156,11 +132,12 @@ func TestGitAddFile(t *testing.T) {
 // TestGitAddFile_MultipleFiles tests adding multiple files
 func TestGitAddFile_MultipleFiles(t *testing.T) {
 	repoDir, cleanup := setupGitTestEnv(t)
+	defer cleanup()
+
 	r, err := NewGitReop()
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
-	defer cleanup()
 
 	// Initialize git repo
 	if err := Initgit(); err != nil {
@@ -211,11 +188,12 @@ func TestGitAddFile_MultipleFiles(t *testing.T) {
 // TestGitAddFile_Subdirectory tests adding a file in a subdirectory
 func TestGitAddFile_Subdirectory(t *testing.T) {
 	repoDir, cleanup := setupGitTestEnv(t)
+	defer cleanup()
+
 	r, err := NewGitReop()
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
-	defer cleanup()
 
 	// Initialize git repo
 	if err := Initgit(); err != nil {
@@ -267,163 +245,237 @@ func TestGitAddFile_Subdirectory(t *testing.T) {
 	}
 }
 
-// TestGitStatusFile tests checking git status
-// func TestGitStatusFile(t *testing.T) {
-// 	repoDir, cleanup := setupGitTestEnv(t)
-// 	defer cleanup()
-// 	r, err := NewGitReop()
-// 	if err != nil {
-// 		t.Fatalf("NewGitReop failed: %v", err)
-// 	}
-// 	// Initialize git repo
-// 	if err := Initgit(); err != nil {
-// 		t.Fatalf("Initgit failed: %v", err)
-// 	}
-
-// 	// Create and add a file
-// 	testFile := filepath.Join(repoDir, "test.txt")
-// 	if err := os.WriteFile(testFile, []byte("test content"), 0644); err != nil {
-// 		t.Fatalf("Failed to create test file: %v", err)
-// 	}
-
-// 	if err := r.GitAddFile("test.txt"); err != nil {
-// 		t.Fatalf("GitAddFile failed: %v", err)
-// 	}
-
-// 	s:=GitStatusFile{
-
-// 	}
-// 	err=s.CheckStatus()
-// 	if err!=nil{
-// 		t.Fatalf("GitStatusFile failed: %v", err)
-// 	}
-// 	// Check status (should be clean after commit)
-// 	if err := r.GitStatusFile("test.txt"); err != nil {
-// 		t.Fatalf("GitStatusFile failed: %v", err)
-// 	}
-// }
-
-// TestGitCommitFile tests committing changes
-// func TestGitCommitFile(t *testing.T) {
-// 	repoDir, cleanup := setupGitTestEnv(t)
-// 	defer cleanup()
-
-// 	// Initialize git repo
-// 	if err := Initgit(); err != nil {
-// 		t.Fatalf("Initgit failed: %v", err)
-// 	}
-
-// 	// Create and add a file
-// 	testFile := filepath.Join(repoDir, "test.txt")
-// 	if err := os.WriteFile(testFile, []byte("initial content"), 0644); err != nil {
-// 		t.Fatalf("Failed to create test file: %v", err)
-// 	}
-
-// 	if err := GitAddFile("test.txt"); err != nil {
-// 		t.Fatalf("GitAddFile failed: %v", err)
-// 	}
-
-// 	// Modify the file
-// 	if err := os.WriteFile(testFile, []byte("modified content"), 0644); err != nil {
-// 		t.Fatalf("Failed to modify test file: %v", err)
-// 	}
-
-// 	// Stage the changes
-// 	repo, err := git.PlainOpen(repoDir)
-// 	if err != nil {
-// 		t.Fatalf("Failed to open repo: %v", err)
-// 	}
-// 	w, err := repo.Worktree()
-// 	if err != nil {
-// 		t.Fatalf("Failed to get worktree: %v", err)
-// 	}
-// 	if _, err := w.Add("test.txt"); err != nil {
-// 		t.Fatalf("Failed to stage file: %v", err)
-// 	}
-
-// 	// Commit the changes
-// 	err = GitCommitFile("test.txt")
-// 	if err != nil {
-// 		t.Fatalf("GitCommitFile failed: %v", err)
-// 	}
-
-// 	// Verify we have 2 commits now
-// 	commitCount := 0
-// 	iter, err := repo.Log(&git.LogOptions{})
-// 	if err != nil {
-// 		t.Fatalf("Failed to get log: %v", err)
-// 	}
-
-// 	err = iter.ForEach(func(c *object.Commit) error {
-// 		commitCount++
-// 		return nil
-// 	})
-// 	if err != nil {
-// 		t.Fatalf("Failed to iterate commits: %v", err)
-// 	}
-
-// 	if commitCount != 2 {
-// 		t.Errorf("Expected 2 commits, got %d", commitCount)
-// 	}
-// }
-
 // TestGitDiffFile tests checking file differences
-// func TestGitDiffFile(t *testing.T) {
-// 	repoDir, cleanup := setupGitTestEnv(t)
-// 	defer cleanup()
+func TestGitDiffFile(t *testing.T) {
+	repoDir, cleanup := setupGitTestEnv(t)
+	defer cleanup()
 
-// 	// Initialize git repo
-// 	if err := Initgit(); err != nil {
-// 		t.Fatalf("Initgit failed: %v", err)
-// 	}
+	r, err := NewGitReop()
+	if err != nil {
+		t.Fatalf("NewGitReop failed: %v", err)
+	}
 
-// 	// Create and add a file
-// 	testFile := filepath.Join(repoDir, "test.txt")
-// 	if err := os.WriteFile(testFile, []byte("initial content"), 0644); err != nil {
-// 		t.Fatalf("Failed to create test file: %v", err)
-// 	}
+	// Initialize git repo
+	if err := Initgit(); err != nil {
+		t.Fatalf("Initgit failed: %v", err)
+	}
 
-// 	if err := GitAddFile("test.txt"); err != nil {
-// 		t.Fatalf("GitAddFile failed: %v", err)
-// 	}
+	// Create and add a file
+	testFile := filepath.Join(repoDir, "test.txt")
+	if err := os.WriteFile(testFile, []byte("initial content"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
 
-// 	// Check diff (should be clean)
-// 	err := GitDiffFile("test.txt")
-// 	if err != nil {
-// 		t.Fatalf("GitDiffFile failed: %v", err)
-// 	}
-// }
+	if err := r.GitAddFile("test.txt"); err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
 
-// TestRepoRoot tests the repo_root helper function
-// func TestRepoRoot(t *testing.T) {
-// 	repoDir, cleanup := setupGitTestEnv(t)
-// 	defer cleanup()
+	// Check diff (should be empty - no changes)
+	diff, err := r.GitDiffFile("test.txt")
+	if err != nil {
+		t.Fatalf("GitDiffFile failed: %v", err)
+	}
+	if diff != "" {
+		t.Errorf("Expected empty diff for unchanged file, got: %s", diff)
+	}
 
-// 	// Get repo root
-// 	root, err := repo_root()
-// 	if err != nil {
-// 		t.Fatalf("repo_root failed: %v", err)
-// 	}
+	// Modify the file
+	if err := os.WriteFile(testFile, []byte("modified content"), 0644); err != nil {
+		t.Fatalf("Failed to modify test file: %v", err)
+	}
 
-// 	if root != repoDir {
-// 		t.Errorf("Expected repo root %s, got %s", repoDir, root)
-// 	}
-// }
+	// Check diff (should show changes)
+	diff, err = r.GitDiffFile("test.txt")
+	if err != nil {
+		t.Fatalf("GitDiffFile failed: %v", err)
+	}
+	if diff == "" {
+		t.Error("Expected diff output for modified file, got empty string")
+	}
+	if !strings.Contains(diff, "test.txt") {
+		t.Errorf("Expected diff to contain filename, got: %s", diff)
+	}
+}
 
-// TestRepoRoot_NoConfig tests repo_root with missing config
-// func TestRepoRoot_NoConfig(t *testing.T) {
-// 	// Set HOME to a non-existent directory
-// 	oldHome := os.Getenv("HOME")
-// 	tmpDir, _ := os.MkdirTemp("", "test-*")
-// 	os.Setenv("HOME", tmpDir)
-// 	defer func() {
-// 		os.Setenv("HOME", oldHome)
-// 		os.RemoveAll(tmpDir)
-// 	}()
+// TestGitDiffFile_NewFile tests diff for a new file not in HEAD
+func TestGitDiffFile_NewFile(t *testing.T) {
+	repoDir, cleanup := setupGitTestEnv(t)
+	defer cleanup()
 
-// 	// Should fail because config doesn't exist
-// 	_, err := repo_root()
-// 	if err == nil {
-// 		t.Fatal("Expected error for missing config, got nil")
-// 	}
-// }
+	r, err := NewGitReop()
+	if err != nil {
+		t.Fatalf("NewGitReop failed: %v", err)
+	}
+
+	// Initialize git repo
+	if err := Initgit(); err != nil {
+		t.Fatalf("Initgit failed: %v", err)
+	}
+
+	// Create initial file to have a commit
+	testFile1 := filepath.Join(repoDir, "file1.txt")
+	if err := os.WriteFile(testFile1, []byte("file1"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+	if err := r.GitAddFile("file1.txt"); err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
+
+	// Create a new file not yet committed
+	testFile2 := filepath.Join(repoDir, "newfile.txt")
+	if err := os.WriteFile(testFile2, []byte("new content"), 0644); err != nil {
+		t.Fatalf("Failed to create new file: %v", err)
+	}
+
+	// Check diff for new file
+	diff, err := r.GitDiffFile("newfile.txt")
+	if err != nil {
+		t.Fatalf("GitDiffFile failed: %v", err)
+	}
+	if !strings.Contains(diff, "newfile.txt") {
+		t.Errorf("Expected diff to contain filename for new file, got: %s", diff)
+	}
+}
+
+// TestGitChangesFile tests getting commit history for a file
+func TestGitChangesFile(t *testing.T) {
+	repoDir, cleanup := setupGitTestEnv(t)
+	defer cleanup()
+
+	r, err := NewGitReop()
+	if err != nil {
+		t.Fatalf("NewGitReop failed: %v", err)
+	}
+
+	// Initialize git repo
+	if err := Initgit(); err != nil {
+		t.Fatalf("Initgit failed: %v", err)
+	}
+
+	// Create and commit a file multiple times
+	testFile := filepath.Join(repoDir, "test.txt")
+
+	// First commit
+	if err := os.WriteFile(testFile, []byte("version 1"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+	if err := r.GitAddFile("test.txt"); err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
+
+	// Second commit
+	if err := os.WriteFile(testFile, []byte("version 2"), 0644); err != nil {
+		t.Fatalf("Failed to modify test file: %v", err)
+	}
+	if err := r.GitAddFile("test.txt"); err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
+
+	// Third commit
+	if err := os.WriteFile(testFile, []byte("version 3"), 0644); err != nil {
+		t.Fatalf("Failed to modify test file: %v", err)
+	}
+	if err := r.GitAddFile("test.txt"); err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
+
+	// Get change history
+	changes, err := r.GitChangesFile("test.txt")
+	if err != nil {
+		t.Fatalf("GitChangesFile failed: %v", err)
+	}
+
+	// Verify we have commit information
+	if len(changes) == 0 {
+		t.Error("Expected commit history, got empty string")
+	}
+
+	// Should contain commit markers
+	commitCount := len(changes)
+	if commitCount != 3 {
+		t.Errorf("Expected 3 commits in history, found %d", commitCount)
+	}
+
+	// Should contain author information
+	for _, c := range changes {
+
+		if !strings.Contains(c.Author, "Author: anybakup") {
+			t.Error("Expected author information in changes")
+		}
+
+		// Should contain date information
+		if !strings.Contains(c.Date, "Date:") {
+			t.Error("Expected date information in changes")
+		}
+	}
+}
+
+// TestGitChangesFile_NoCommits tests getting history for a file with no commits
+func TestGitChangesFile_NoCommits(t *testing.T) {
+	repoDir, cleanup := setupGitTestEnv(t)
+	defer cleanup()
+
+	r, err := NewGitReop()
+	if err != nil {
+		t.Fatalf("NewGitReop failed: %v", err)
+	}
+
+	// Initialize git repo
+	if err := Initgit(); err != nil {
+		t.Fatalf("Initgit failed: %v", err)
+	}
+
+	// Create a file to have at least one commit
+	testFile1 := filepath.Join(repoDir, "file1.txt")
+	if err := os.WriteFile(testFile1, []byte("content"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+	if err := r.GitAddFile("file1.txt"); err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
+
+	// Try to get history for a file that was never committed
+	changes, err := r.GitChangesFile("nonexistent.txt")
+	if err != nil {
+		t.Fatalf("GitChangesFile failed: %v", err)
+	}
+
+	// Should indicate no commits found
+	if len(changes) == 0 {
+		t.Error("Expected commit history, got empty string")
+	}
+}
+
+// TestGitStatusFile tests checking git status
+func TestGitStatusFile(t *testing.T) {
+	repoDir, cleanup := setupGitTestEnv(t)
+	defer cleanup()
+
+	r, err := NewGitReop()
+	if err != nil {
+		t.Fatalf("NewGitReop failed: %v", err)
+	}
+
+	// Initialize git repo
+	if err := Initgit(); err != nil {
+		t.Fatalf("Initgit failed: %v", err)
+	}
+
+	// Create and add a file
+	testFile := filepath.Join(repoDir, "test.txt")
+	if err := os.WriteFile(testFile, []byte("test content"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	if err := r.GitAddFile("test.txt"); err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
+
+	// Check status
+	s := GitStatusFile{}
+	err = s.CheckStatus()
+	if err != nil {
+		t.Fatalf("GitStatusFile.CheckStatus failed: %v", err)
+	}
+
+}
