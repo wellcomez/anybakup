@@ -1,13 +1,23 @@
 package cmd
 
 import (
+	"anybakup/util"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/go-git/go-git/v5"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
+
+func initgit(dir string) error {
+	_, err := git.PlainInit(dir, false)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 // initCmd represents the init command
 var initCmd = &cobra.Command{
@@ -30,26 +40,19 @@ var initCmd = &cobra.Command{
 		}
 		fmt.Printf("Initialized empty repository in %s\n", absPath)
 
-		// 2. Create config file ~/.config/anybakup/config.yaml
-		home, err := os.UserHomeDir()
-		if err != nil {
-			fmt.Printf("Error getting home directory: %v\n", err)
+		// Initialize git repository
+		if err := initgit(absPath); err != nil {
+			fmt.Printf("Error initializing git repository: %v\n", err)
 			os.Exit(1)
+		}
+		fmt.Printf("Git repository initialized in %s\n", absPath)
+		a :=util.Config{
+			RepoDir: absPath,
+		}
+		if err := a.Save(); err != nil {
+			logrus.Error(err)
 		}
 
-		configDir := filepath.Join(home, ".config", "anybakup")
-		if err := os.MkdirAll(configDir, 0755); err != nil {
-			fmt.Printf("Error creating config directory: %v\n", err)
-			os.Exit(1)
-		}
-
-		viper.Set("repodir", absPath)
-		configFilePath := filepath.Join(configDir, "config.yaml")
-		if err := viper.WriteConfigAs(configFilePath); err != nil {
-			fmt.Printf("Error writing config file: %v\n", err)
-			os.Exit(1)
-		}
-		fmt.Printf("Configuration saved to %s\n", configFilePath)
 	},
 }
 
