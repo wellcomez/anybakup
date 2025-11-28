@@ -1,7 +1,6 @@
 package util
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -12,34 +11,6 @@ import (
 // For example:
 //   - /a/b/c.file -> /repo/a/b/c.file (file)
 //   - /a/b -> /repo/a/b (directory, copied recursively)
-func CopyToRepo(src string) (string, error) {
-	conf := Config{}
-	if err := conf.Load(); err != nil {
-		return "", fmt.Errorf("copytorepo error load config: %v", err)
-	}
-
-	// Verify source exists and get its info
-	srcInfo, err := os.Stat(src)
-	if err != nil {
-		return "", fmt.Errorf("copytorepo error stat src: %v", err)
-	}
-
-	// Create destination path by appending src path (without leading /) to repo dir
-	dest := conf.RepoDir.With(src[1:])
-
-	// Copy based on whether src is a file or directory
-	if srcInfo.IsDir() {
-		err = copyDir(src, dest)
-	} else {
-		err = copyFile(src, dest)
-	}
-
-	if err != nil {
-		return "", fmt.Errorf("copytorepo error copying: %v", err)
-	}
-
-	return dest, nil
-}
 
 // copyFile copies a single file from src to dst, preserving permissions
 func copyFile(src, dst string) error {

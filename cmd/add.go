@@ -1,27 +1,30 @@
 package cmd
 
 import (
-	"anybakup/util"
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"anybakup/util"
 
 	"github.com/spf13/cobra"
 )
 
 func add_file(file string) (string, error) {
-	dest, err := util.CopyToRepo(file)
+	repo, err := util.NewGitReop()
 	if err != nil {
-		return dest, err
+		return "", err
 	}
-	if repo, err := util.NewGitReop(); err != nil {
-		return dest, err
-	} else if yes, err := repo.GitAddFile(dest); err != nil {
-		return dest, err
+	dest, err := repo.CopyToRepo(file)
+	if err != nil {
+		return "", err
+	}
+	if yes, err := repo.GitAddFile(dest); err != nil {
+		return "", err
 	} else if !yes {
-		return dest, fmt.Errorf("no change")
+		return "", fmt.Errorf("no change")
 	}
-	return dest, nil
+	return dest.Sting(), nil
 }
 
 // addCmd represents the add command

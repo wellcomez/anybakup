@@ -8,7 +8,7 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
-type RepoRoot string
+
 type Config struct {
 	RepoDir RepoRoot `yaml:"repodir"`
 }

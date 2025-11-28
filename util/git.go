@@ -10,9 +10,32 @@ import (
 	"github.com/go-git/go-git/v6/plumbing/object"
 )
 
-type GitRepo struct {
-	root string
-	repo *git.Repository
+type (
+	RepoPath string
+	SysPath  string
+	RepoRoot string
+	GitRepo  struct {
+		root string
+		repo *git.Repository
+	}
+)
+
+func (s RepoPath) Sting() string {
+	return string(s)
+}
+
+func (r GitRepo) repopath(path SysPath) (RepoPath, error) {
+	s := string(path)
+	ret := RepoPath("")
+	if !filepath.IsAbs(s) {
+		return ret, fmt.Errorf("should absPath")
+	}
+
+	rel, err := filepath.Rel(r.root, s)
+	if err != nil {
+		return "", fmt.Errorf("git repo %v %v", err, s)
+	}
+	return RepoPath(rel), nil
 }
 
 func (r GitRepo) rel(s string) (string, error) {
@@ -30,6 +53,31 @@ func (r GitRepo) rel(s string) (string, error) {
 	}
 	return rel, nil
 }
+
+func (conf GitRepo) CopyToRepo(src string) (RepoPath, error) {
+	// Verify source exists and get its info
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return "", fmt.Errorf("copytorepo error stat src: %v", err)
+	}
+
+	// Create destination path by appending src path (without leading /) to repo dir
+	reporoot := RepoRoot(conf.root)
+	dest := reporoot.With(src[1:])
+
+	// Copy based on whether src is a file or directory
+	if srcInfo.IsDir() {
+		err = copyDir(src, dest)
+	} else {
+		err = copyFile(src, dest)
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("copytorepo error copying: %v", err)
+	}
+	return conf.repopath(SysPath(dest))
+}
+
 func (r *GitRepo) load() error {
 	conf := Config{}
 	if err := conf.Load(); err != nil {
@@ -45,10 +93,12 @@ func (r *GitRepo) load() error {
 	r.root = conf.RepoDir.String()
 	return nil
 }
+
 func (r GitRepo) PathOfRepo(s string) string {
 	b := RepoRoot(r.root)
 	return b.With(s)
 }
+
 func NewGitReop() (*GitRepo, error) {
 	ret := &GitRepo{}
 	if err := ret.load(); err != nil {
@@ -89,21 +139,22 @@ func (r GitRepo) Init() error {
 	}
 	return nil
 }
-func (r GitRepo) GitRmFile(filex string) (bool, error) {
+
+func (r GitRepo) GitRmFile(real_path string) (bool, error) {
 	add := false
 	repo, err := r.Open()
 	if err != nil {
-		return add, fmt.Errorf("git rm err=%v file=%v", err, filex)
+		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
 	}
 	w, err := repo.Worktree()
 	if err != nil {
-		return add, fmt.Errorf("git rm err=%v file=%v", err, filex)
+		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
 	}
-	os.Remove(filex)
+	os.Remove(real_path)
 
-	gitfile, err := r.rel(filex)
+	gitfile, err := r.rel(real_path)
 	if err != nil {
-		return add, fmt.Errorf("git rm err=%v file=%v:%v", err, gitfile, filex)
+		return add, fmt.Errorf("git rm err=%v file=%v:%v", err, gitfile, real_path)
 	}
 	state, err := GetState(gitfile, &r)
 	if err != nil {
@@ -111,19 +162,22 @@ func (r GitRepo) GitRmFile(filex string) (bool, error) {
 	}
 	fmt.Printf("%-10s rm %-50s %v\n", "before", gitfile, state)
 	_, err = w.Remove(gitfile)
+	if err != nil {
+		fmt.Println(err)
+	}
 	state, err = GetState(gitfile, &r)
 	if err != nil {
 		fmt.Println(err)
 	}
 	if err != nil {
-		return add, fmt.Errorf("git rm err:=%v file:=%v:%v", err, gitfile, filex)
+		return add, fmt.Errorf("git rm err:=%v file:=%v:%v", err, gitfile, real_path)
 	}
 	fmt.Printf("%-10s rm %-50s %v\n", "after", gitfile, state)
 	yes := state == GitAdded || state == GitUnmodified
 	if !yes {
 		return add, fmt.Errorf("no change")
 	}
-	msg := fmt.Sprintf("RM %v", filex)
+	msg := fmt.Sprintf("RM %v", real_path)
 	_, err = w.Commit(msg, &git.CommitOptions{
 		Author: &object.Signature{
 			Name: "anybakup",
@@ -131,22 +185,21 @@ func (r GitRepo) GitRmFile(filex string) (bool, error) {
 		},
 	})
 	if err != nil {
-		return add, fmt.Errorf("git commit err=%v file=%v:%v", err, gitfile, filex)
+		return add, fmt.Errorf("git commit err=%v file=%v:%v", err, gitfile, real_path)
 	}
 	add = true
 	return add, nil
 }
-func (r GitRepo) GitAddFile(file string) (bool, error) {
+
+func (r GitRepo) GitAddFile(gitpath RepoPath) (bool, error) {
+	file := r.PathOfRepo(gitpath.Sting())
+	gitfile := gitpath.Sting()
 	add := false
 	repo, err := r.Open()
 	if err != nil {
 		return add, fmt.Errorf("git add %v", err)
 	}
 	w, err := repo.Worktree()
-	if err != nil {
-		return add, fmt.Errorf("git add %v %v", err, file)
-	}
-	gitfile, err := r.rel(file)
 	if err != nil {
 		return add, fmt.Errorf("git add %v %v", err, file)
 	}
@@ -297,7 +350,6 @@ func (r GitRepo) GitChangesFile(file string) ([]GitChanges, error) {
 		ret = append(ret, r)
 		return nil
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("git changes: failed to iterate commits: %v", err)
 	}
