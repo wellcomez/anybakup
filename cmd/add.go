@@ -14,10 +14,11 @@ func add_file(file string) (string, error) {
 	if err != nil {
 		return dest, err
 	}
-	if err := util.GitAddFile(dest); err != nil {
+	if repo, err := util.NewGitReop(); err != nil {
 		return dest, err
+	} else {
+		return dest, repo.GitAddFile(dest)
 	}
-	return dest, nil
 }
 
 // addCmd represents the add command

@@ -10,21 +10,26 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
-type reporoot struct {
+type GitRepo struct {
 	root string
 }
 
-func (r reporoot) rel(s string) (string, error) {
+func (r GitRepo) rel(s string) (string, error) {
 	if !filepath.IsAbs(s) {
-		return "", fmt.Errorf("git repo %v is not absolute path", s)
+		f := filepath.Join(r.root, s)
+		if _, err := os.Stat(f); err != nil {
+			return "", fmt.Errorf("git repo %v %v", err, s)
+		}
+		return s, nil
 	}
+
 	rel, err := filepath.Rel(r.root, s)
 	if err != nil {
 		return "", fmt.Errorf("git repo %v %v", err, s)
 	}
 	return rel, nil
 }
-func (r *reporoot) load() error {
+func (r *GitRepo) load() error {
 	conf := Config{}
 	if err := conf.Load(); err != nil {
 		return fmt.Errorf("git repo %v", err)
@@ -39,15 +44,24 @@ func (r *reporoot) load() error {
 	r.root = conf.RepoDir.String()
 	return nil
 }
-func new_repo() (*reporoot, error) {
-	ret := &reporoot{}
+func NewGitReop() (*GitRepo, error) {
+	ret := &GitRepo{}
 	if err := ret.load(); err != nil {
 		return nil, err
 	}
 	return ret, nil
 }
+
+func (r GitRepo) Open() (*git.Repository, error) {
+	git, err := git.PlainOpen(r.root)
+	if err != nil {
+		return nil, fmt.Errorf("open git repo %v %v", err, r.root)
+	}
+	return git, nil
+}
+
 func Initgit() error {
-	repo, err := new_repo()
+	repo, err := NewGitReop()
 	if err != nil {
 		return fmt.Errorf("init git repo %v", err)
 	}
@@ -57,21 +71,16 @@ func Initgit() error {
 	}
 	return nil
 }
-func GitAddFile(file string) error {
-	reporoot, err := new_repo()
+func (r GitRepo) GitAddFile(file string) error {
+	repo, err := r.Open()
 	if err != nil {
 		return fmt.Errorf("git add %v", err)
 	}
-	dir := reporoot.root
-	repo, err := git.PlainOpen(dir)
-	if err != nil {
-		return fmt.Errorf("git add %v %v", err, dir)
-	}
 	w, err := repo.Worktree()
 	if err != nil {
-		return fmt.Errorf("git add %v %v", err, dir)
+		return fmt.Errorf("git add %v %v", err, file)
 	}
-	gitfile, err := reporoot.rel(file)
+	gitfile, err := r.rel(file)
 	if err != nil {
 		return fmt.Errorf("git add %v %v", err, file)
 	}
@@ -91,17 +100,22 @@ func GitAddFile(file string) error {
 	}
 	return nil
 }
-type GitStatusFile struct  {
-	status git.Status
-	cleand bool
+
+type GitStatusFile struct {
+	status   git.Status
+	cleand   bool
+	reporoot *GitRepo
 }
 
-func(s* GitStatusFile)Check() error{
-	reporoot, err := new_repo()
-	if err != nil {
-		return fmt.Errorf("status file %v", err)
+func (s *GitStatusFile) CheckStatus() error {
+	if s.reporoot == nil {
+		var err error
+		s.reporoot, err = NewGitReop()
+		if err != nil {
+			return fmt.Errorf("status file %v", err)
+		}
 	}
-	dir := reporoot.root
+	dir := s.reporoot.root
 	repo, err := git.PlainOpen(dir)
 	if err != nil {
 		return fmt.Errorf("status file %v %v", err, dir)
@@ -119,7 +133,7 @@ func(s* GitStatusFile)Check() error{
 	return nil
 }
 func GitCommitFile(file string) error {
-	reporoot, err := new_repo()
+	reporoot, err := NewGitReop()
 	if err != nil {
 		return fmt.Errorf("commit file %v", err)
 	}
@@ -145,7 +159,7 @@ func GitCommitFile(file string) error {
 }
 
 func GitDiffFile(file string) error {
-	reporoot, err := new_repo()
+	reporoot, err := NewGitReop()
 	if err != nil {
 		return fmt.Errorf("diff file %v", err)
 	}
