@@ -9,12 +9,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func add_file(file string) (dest string, err error) {
-	dest, err = util.CopyToRepo(file)
+func add_file(file string) (string, error) {
+	dest, err := util.CopyToRepo(file)
 	if err != nil {
-		return
+		return dest, err
 	}
-	return
+	if err := util.GitAddFile(dest); err != nil {
+		return dest, err
+	}
+	return dest, nil
 }
 
 // addCmd represents the add command
@@ -27,11 +30,11 @@ var addCmd = &cobra.Command{
 		filePath := args[0]
 		absFilePath, err := filepath.Abs(filePath)
 		if err != nil {
-			fmt.Printf("Error add file %v: %v\n", filePath, err)
+			fmt.Printf("Error add file %v: [%v]\n", filePath, err)
 			os.Exit(1)
 		}
 		if dest, err := add_file(absFilePath); err != nil {
-			fmt.Printf("Error add file %v: %v\n", filePath, err)
+			fmt.Printf("Error add file %v: [%v]\n", filePath, err)
 			os.Exit(1)
 		} else {
 			fmt.Printf("add %s to %s\n", filePath, dest)
