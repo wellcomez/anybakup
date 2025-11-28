@@ -26,7 +26,7 @@ var rmCmd = &cobra.Command{
 			fmt.Printf("Error add file %v: [%v]\n", filePath, err)
 			os.Exit(1)
 		} else {
-			yes, err := repo.GitRmFile(repo.PathOfRepo(absFilePath))
+			yes, err := repo.GitRmFile(repo.AbstoRepo(absFilePath))
 			if err != nil {
 				fmt.Printf("Error add file %v: [%v]\n", filePath, err)
 				os.Exit(1)

@@ -24,19 +24,6 @@ func (s RepoPath) Sting() string {
 	return string(s)
 }
 
-func (r GitRepo) repopath(path SysPath) (RepoPath, error) {
-	s := string(path)
-	ret := RepoPath("")
-	if !filepath.IsAbs(s) {
-		return ret, fmt.Errorf("should absPath")
-	}
-
-	rel, err := filepath.Rel(r.root, s)
-	if err != nil {
-		return "", fmt.Errorf("git repo %v %v", err, s)
-	}
-	return RepoPath(rel), nil
-}
 
 func (r GitRepo) rel(s string) (string, error) {
 	if !filepath.IsAbs(s) {
@@ -62,9 +49,10 @@ func (conf GitRepo) CopyToRepo(src string) (RepoPath, error) {
 	}
 
 	// Create destination path by appending src path (without leading /) to repo dir
-	reporoot := RepoRoot(conf.root)
-	dest := reporoot.With(src[1:])
+	ret := RepoPath(conf.AbstoRepo(src))
 
+	reporoot := RepoRoot(conf.root)
+	dest := reporoot.With(ret.Sting())
 	// Copy based on whether src is a file or directory
 	if srcInfo.IsDir() {
 		err = copyDir(src, dest)
@@ -75,7 +63,7 @@ func (conf GitRepo) CopyToRepo(src string) (RepoPath, error) {
 	if err != nil {
 		return "", fmt.Errorf("copytorepo error copying: %v", err)
 	}
-	return conf.repopath(SysPath(dest))
+	return ret, nil
 }
 
 func (r *GitRepo) load() error {
@@ -93,10 +81,16 @@ func (r *GitRepo) load() error {
 	r.root = conf.RepoDir.String()
 	return nil
 }
-
-func (r GitRepo) PathOfRepo(s string) string {
+func (r GitRepo)AbstoRepo(s string) RepoPath{
+	rel, err := filepath.Rel("/",s)
+	if err != nil {
+		return ""
+	}
+	return RepoPath(rel) 
+}
+func (r GitRepo) pathOfRepo(s RepoPath) string {
 	b := RepoRoot(r.root)
-	return b.With(s)
+	return b.With(s.Sting())
 }
 
 func NewGitReop() (*GitRepo, error) {
@@ -140,7 +134,7 @@ func (r GitRepo) Init() error {
 	return nil
 }
 
-func (r GitRepo) GitRmFile(real_path string) (bool, error) {
+func (r GitRepo) GitRmFile(real_path RepoPath) (bool, error) {
 	add := false
 	repo, err := r.Open()
 	if err != nil {
@@ -150,12 +144,11 @@ func (r GitRepo) GitRmFile(real_path string) (bool, error) {
 	if err != nil {
 		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
 	}
-	os.Remove(real_path)
 
-	gitfile, err := r.rel(real_path)
-	if err != nil {
-		return add, fmt.Errorf("git rm err=%v file=%v:%v", err, gitfile, real_path)
-	}
+	abspath:=r.pathOfRepo(real_path)
+	os.Remove(abspath)
+
+	gitfile :=real_path.Sting()
 	state, err := GetState(gitfile, &r)
 	if err != nil {
 		fmt.Println(err)
@@ -192,7 +185,7 @@ func (r GitRepo) GitRmFile(real_path string) (bool, error) {
 }
 
 func (r GitRepo) GitAddFile(gitpath RepoPath) (bool, error) {
-	file := r.PathOfRepo(gitpath.Sting())
+	file := r.pathOfRepo(gitpath)
 	gitfile := gitpath.Sting()
 	add := false
 	repo, err := r.Open()
