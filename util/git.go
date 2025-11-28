@@ -184,8 +184,9 @@ func (r GitRepo) GitDiffFile(file string) (string, error) {
 	}
 
 	// Simple diff representation
-	diff := fmt.Sprintf("--- a/%s\n+++ b/%s\n", gitfile, gitfile)
+	diff := ""
 	if headContent != string(workingContent) {
+		diff += fmt.Sprintf("--- a/%s\n+++ b/%s\n", gitfile, gitfile)
 		diff += "@@ File changed @@\n"
 		diff += fmt.Sprintf("- HEAD: %d bytes\n", len(headContent))
 		diff += fmt.Sprintf("+ Working: %d bytes\n", len(workingContent))

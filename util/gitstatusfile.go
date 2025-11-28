@@ -6,44 +6,47 @@ import (
 	"github.com/go-git/go-git/v5"
 )
 
-type GitStatusFile struct {
-	status   git.Status
-	reporoot *GitRepo
-}
+// type GitStatusFile struct {
+// 	// status   git.Status
+// 	reporoot *GitRepo
+// }
 
-func NewGitCheckStatus() (*GitStatusFile, error) {
-	s := GitStatusFile{}
-	if s.reporoot == nil {
-		var err error
-		s.reporoot, err = NewGitReop()
-		if err != nil {
-			return nil, fmt.Errorf("status file %v", err)
-		}
-	}
-	return &s, nil
-}
-func (s *GitStatusFile) CheckStatus() error {
-	repo, err := s.reporoot.Open()
+//	func NewGitCheckStatus() (*GitStatusFile, error) {
+//		s := GitStatusFile{}
+//		if s.reporoot == nil {
+//			var err error
+//			s.reporoot, err = NewGitReop()
+//			if err != nil {
+//				return nil, fmt.Errorf("status file %v", err)
+//			}
+//		}
+//		return &s, nil
+//	}
+func CheckStatus(git *git.Repository) (git.Status, error) {
+	w, err := git.Worktree()
 	if err != nil {
-		return fmt.Errorf("status file Open %v", err)
-	}
-	w, err := repo.Worktree()
-	if err != nil {
-		return fmt.Errorf("status file worktree %v", err)
+		return nil, fmt.Errorf("status file worktree %v", err)
 	}
 	status, err := w.Status()
 	if err != nil {
-		return fmt.Errorf("status file Status %v", err)
+		return nil, fmt.Errorf("status file Status %v", err)
 	}
-	s.status = status
-	return nil
+	return status, nil
 }
-func (s GitStatusFile) GetState(file string) (StatusCode, error) {
-	gitfile, err := s.reporoot.rel(file)
+func GetState(file string, repo *GitRepo) (StatusCode, error) {
+	if repo == nil {
+		r, _ := NewGitReop()
+		repo = r
+	}
+	status, err := CheckStatus(repo.repo)
 	if err != nil {
 		return GitStatusErro, err
 	}
-	st := s.status.File(gitfile)
+	gitfile, err := repo.rel(file)
+	if err != nil {
+		return GitStatusErro, err
+	}
+	st := status.File(gitfile)
 	if st.Worktree == git.Unmodified {
 		return GitUnmodified, nil
 	}

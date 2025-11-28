@@ -436,12 +436,12 @@ func TestGitChangesFile_NoCommits(t *testing.T) {
 
 	// Try to get history for a file that was never committed
 	changes, err := r.GitChangesFile("nonexistent.txt")
-	if err != nil {
+	if err == nil {
 		t.Fatalf("GitChangesFile failed: %v", err)
 	}
 
 	// Should indicate no commits found
-	if len(changes) == 0 {
+	if len(changes) != 0 {
 		t.Error("Expected commit history, got empty string")
 	}
 }
@@ -451,31 +451,51 @@ func TestGitStatusFile(t *testing.T) {
 	repoDir, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	r, err := NewGitReop()
-	if err != nil {
-		t.Fatalf("NewGitReop failed: %v", err)
-	}
-
 	// Initialize git repo
 	// if err := Initgit(); err != nil {
 	// 	t.Fatalf("Initgit failed: %v", err)
 	// }
 
+	const newConst = "test.txt"
 	// Create and add a file
-	testFile := filepath.Join(repoDir, "test.txt")
+	testFile := filepath.Join(repoDir, newConst)
 	if err := os.WriteFile(testFile, []byte("test content"), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
-	if err := r.GitAddFile("test.txt"); err != nil {
+	// Add the file
+	if s, err := GetState(testFile, nil); err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	} else if s != GitUntracked {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
+	r, _ := NewGitReop()
+	if err := r.GitAddFile(testFile); err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
+	// if s, err := GetState(testFile); err != nil {
+	// 	t.Fatalf("GitAddFile failed: %v", err)
+	// } else if s != GitUnmodified {
+	// 	t.Fatalf("GitAddFile failed: %v", err)
+	// }
+
+	if err := os.WriteFile(testFile, []byte("test content sss"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	if s, err := GetState(testFile, nil); err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	} else if s != GitModified {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
 
-	// Check status
-	s := GitStatusFile{}
-	err = s.CheckStatus()
-	if err != nil {
-		t.Fatalf("GitStatusFile.CheckStatus failed: %v", err)
+	if err := os.WriteFile(testFile, []byte("test content"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
 	}
 
+	if s, err := GetState(testFile, nil); err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	} else if s != GitUntracked {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
 }
