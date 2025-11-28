@@ -502,4 +502,9 @@ func TestGitStatusFile(t *testing.T) {
 	} else if s != GitUntracked {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
+	
+	
+	if _, err := r.GitRmFile(testFile); err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
 }

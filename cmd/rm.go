@@ -1,12 +1,12 @@
 package cmd
 
 import (
+	"anybakup/util"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // rmCmd represents the rm command
@@ -17,26 +17,25 @@ var rmCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		filePath := args[0]
-		fileName := filepath.Base(filePath)
-
-		repoDir := viper.GetString("repodir")
-		if repoDir == "" {
-			fmt.Println("Repository directory not configured. Run 'anybakup init <dir>' first.")
+		absFilePath, err := filepath.Abs(filePath)
+		if err != nil {
+			fmt.Printf("Error add file %v: [%v]\n", filePath, err)
 			os.Exit(1)
 		}
-
-		destPath := filepath.Join(repoDir, fileName)
-
-		if err := os.Remove(destPath); err != nil {
-			if os.IsNotExist(err) {
-				fmt.Printf("File '%s' is not in the repository.\n", fileName)
-			} else {
-				fmt.Printf("Error removing file: %v\n", err)
+		if repo, err := util.NewGitReop(); err != nil {
+			fmt.Printf("Error add file %v: [%v]\n", filePath, err)
+			os.Exit(1)
+		} else {
+			yes, err := repo.GitRmFile(repo.PathOfRepo(absFilePath))
+			if err != nil {
+				fmt.Printf("Error add file %v: [%v]\n", filePath, err)
 				os.Exit(1)
 			}
-		} else {
-			fmt.Printf("Removed '%s' from repository.\n", fileName)
+			if yes {
+				fmt.Printf("rm %s from %s\n", filePath, absFilePath)
+			}
 		}
+
 	},
 }
 

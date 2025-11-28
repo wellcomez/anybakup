@@ -31,9 +31,9 @@ func CheckStatus(git *git.Repository) (git.Status, error) {
 
 	// w.StatusWithOptions(git.StatusOptions{Strategy: git.Preload})
 	status, err := w.Status()
-	fmt.Printf("status file Status %v\n", status.String())
+	fmt.Printf("STATUS FILE STATUS \n%v\n", status.String())
 	if err != nil {
-		return nil, fmt.Errorf("status file Status %v", err)
+		return nil, fmt.Errorf("workstate err=%v", err)
 	}
 	for a, k := range status {
 		fmt.Printf("%-50s w:=[%c]|[%s]\n", a, k.Worktree, k.Extra)
@@ -81,7 +81,7 @@ func GetState(file string, repo *GitRepo) (StatusCode, error) {
 	if st.Worktree == git.UpdatedButUnmerged {
 		return GitUpdatedButUnmerged, nil
 	}
-	return GitStatusErro, fmt.Errorf("status file %v %v", err, file)
+	return GitStatusErro, fmt.Errorf("workstate %v %v", st.Worktree, file)
 }
 
 type StatusCode string

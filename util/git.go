@@ -17,10 +17,10 @@ type GitRepo struct {
 
 func (r GitRepo) rel(s string) (string, error) {
 	if !filepath.IsAbs(s) {
-		f := filepath.Join(r.root, s)
-		if _, err := os.Stat(f); err != nil {
-			return "", fmt.Errorf("git repo %v %v", err, s)
-		}
+		// f := filepath.Join(r.root, s)
+		// if _, err := os.Stat(f); err != nil {
+		// 	return "", fmt.Errorf("git repo %v %v", err, s)
+		// }
 		return s, nil
 	}
 
@@ -44,6 +44,10 @@ func (r *GitRepo) load() error {
 	}
 	r.root = conf.RepoDir.String()
 	return nil
+}
+func (r GitRepo) PathOfRepo(s string) string {
+	b := RepoRoot(r.root)
+	return b.With(s)
 }
 func NewGitReop() (*GitRepo, error) {
 	ret := &GitRepo{}
@@ -84,6 +88,53 @@ func (r GitRepo) Init() error {
 		return fmt.Errorf("init git repo %v %v", err, r.root)
 	}
 	return nil
+}
+func (r GitRepo) GitRmFile(filex string) (bool, error) {
+	add := false
+	repo, err := r.Open()
+	if err != nil {
+		return add, fmt.Errorf("git rm err=%v file=%v", err, filex)
+	}
+	w, err := repo.Worktree()
+	if err != nil {
+		return add, fmt.Errorf("git rm err=%v file=%v", err, filex)
+	}
+	os.Remove(filex)
+
+	gitfile, err := r.rel(filex)
+	if err != nil {
+		return add, fmt.Errorf("git rm err=%v file=%v:%v", err, gitfile, filex)
+	}
+	state, err := GetState(gitfile, &r)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Printf("%-10s rm %-50s %v\n", "before", gitfile, state)
+	_, err = w.Remove(gitfile)
+	state, err = GetState(gitfile, &r)
+	if err != nil {
+		fmt.Println(err)
+	}
+	if err != nil {
+		return add, fmt.Errorf("git rm err:=%v file:=%v:%v", err, gitfile, filex)
+	}
+	fmt.Printf("%-10s rm %-50s %v\n", "after", gitfile, state)
+	yes := state == GitAdded || state == GitUnmodified
+	if !yes {
+		return add, fmt.Errorf("no change")
+	}
+	msg := fmt.Sprintf("RM %v", filex)
+	_, err = w.Commit(msg, &git.CommitOptions{
+		Author: &object.Signature{
+			Name: "anybakup",
+			When: time.Now(),
+		},
+	})
+	if err != nil {
+		return add, fmt.Errorf("git commit err=%v file=%v:%v", err, gitfile, filex)
+	}
+	add = true
+	return add, nil
 }
 func (r GitRepo) GitAddFile(file string) (bool, error) {
 	add := false
