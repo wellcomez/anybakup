@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/plumbing"
 	"github.com/go-git/go-git/v6/plumbing/object"
 )
 
@@ -255,6 +256,54 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 	}
 	add = GitResultAdd
 	return add, nil
+}
+func (r GitRepo) GitViewFile(gitpath RepoPath, commitHash string, outpath string) (string, error) {
+	repo, err := r.Open()
+	if err != nil {
+		return "", fmt.Errorf("git view file: failed to open repo: %v", err)
+	}
+
+	gitfile := gitpath.Sting()
+
+	// Parse commit hash
+	hash := plumbing.NewHash(commitHash)
+
+	// Get commit object
+	commit, err := repo.CommitObject(hash)
+	if err != nil {
+		return "", fmt.Errorf("git view file: failed to get commit %s: %v", commitHash, err)
+	}
+
+	// Get tree from commit
+	tree, err := commit.Tree()
+	if err != nil {
+		return "", fmt.Errorf("git view file: failed to get tree: %v", err)
+	}
+
+	// Get file from tree
+	file, err := tree.File(gitfile)
+	if err != nil {
+		return "", fmt.Errorf("git view file: file %s not found in commit %s: %v", gitfile, commitHash, err)
+	}
+
+	// Read file contents
+	contents, err := file.Contents()
+	if err != nil {
+		return "", fmt.Errorf("git view file: failed to read file contents: %v", err)
+	}
+
+	// Create output directory if it doesn't exist
+	outDir := filepath.Dir(outpath)
+	if err := os.MkdirAll(outDir, 0755); err != nil {
+		return "", fmt.Errorf("git view file: failed to create output directory: %v", err)
+	}
+
+	// Write contents to output file
+	if err := os.WriteFile(outpath, []byte(contents), 0644); err != nil {
+		return "", fmt.Errorf("git view file: failed to write output file: %v", err)
+	}
+
+	return outpath, nil
 }
 
 // GitDiffFile compares a file between working directory and HEAD commit

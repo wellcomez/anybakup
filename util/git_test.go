@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/plumbing/object"
 )
 
 // setupGitTestEnv creates a temporary test environment with config and git repo
@@ -506,5 +506,178 @@ func TestGitStatusFile(t *testing.T) {
 
 	if _, err := r.GitRmFile(gitapth); err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
+	}
+}
+
+// TestGitViewFile tests checking out a file from a specific commit
+func TestGitViewFile(t *testing.T) {
+	repoDir, cleanup := setupGitTestEnv(t)
+	defer cleanup()
+
+	r, err := NewGitReop()
+	if err != nil {
+		t.Fatalf("NewGitReop failed: %v", err)
+	}
+
+	// Create and commit a file with initial content
+	testFile := filepath.Join(repoDir, "test.txt")
+	initialContent := "version 1 content"
+	if err := os.WriteFile(testFile, []byte(initialContent), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	_, err = r.GitAddFile("test.txt")
+	if err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
+
+	// Get the commit hash of the first version
+	repo, err := r.Open()
+	if err != nil {
+		t.Fatalf("Failed to open repo: %v", err)
+	}
+
+	ref, err := repo.Head()
+	if err != nil {
+		t.Fatalf("Failed to get HEAD: %v", err)
+	}
+	firstCommitHash := ref.Hash().String()
+
+	// Modify the file and commit again
+	modifiedContent := "version 2 content - modified"
+	if err := os.WriteFile(testFile, []byte(modifiedContent), 0644); err != nil {
+		t.Fatalf("Failed to modify test file: %v", err)
+	}
+
+	_, err = r.GitAddFile("test.txt")
+	if err != nil {
+		t.Fatalf("GitAddFile failed for second commit: %v", err)
+	}
+
+	// Create output directory
+	outputDir := filepath.Join(repoDir, "output")
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		t.Fatalf("Failed to create output dir: %v", err)
+	}
+
+	// Test 1: Checkout the first version using commit hash
+	outputFile := filepath.Join(outputDir, "test_v1.txt")
+	resultPath, err := r.GitViewFile(RepoPath("test.txt"), firstCommitHash, outputFile)
+	if err != nil {
+		t.Fatalf("GitViewFile failed: %v", err)
+	}
+
+	if resultPath != outputFile {
+		t.Errorf("Expected result path %s, got %s", outputFile, resultPath)
+	}
+
+	// Verify the content matches the first version
+	content, err := os.ReadFile(outputFile)
+	if err != nil {
+		t.Fatalf("Failed to read output file: %v", err)
+	}
+
+	if string(content) != initialContent {
+		t.Errorf("Expected content %q, got %q", initialContent, string(content))
+	}
+
+	// Test 2: Checkout to a subdirectory that doesn't exist yet
+	outputFile2 := filepath.Join(outputDir, "subdir", "nested", "test.txt")
+	resultPath2, err := r.GitViewFile(RepoPath("test.txt"), firstCommitHash, outputFile2)
+	if err != nil {
+		t.Fatalf("GitViewFile failed for nested directory: %v", err)
+	}
+
+	if resultPath2 != outputFile2 {
+		t.Errorf("Expected result path %s, got %s", outputFile2, resultPath2)
+	}
+
+	// Verify the file exists and has correct content
+	content2, err := os.ReadFile(outputFile2)
+	if err != nil {
+		t.Fatalf("Failed to read nested output file: %v", err)
+	}
+
+	if string(content2) != initialContent {
+		t.Errorf("Expected content %q in nested file, got %q", initialContent, string(content2))
+	}
+}
+
+// TestGitViewFile_InvalidCommit tests error handling for invalid commit hash
+func TestGitViewFile_InvalidCommit(t *testing.T) {
+	repoDir, cleanup := setupGitTestEnv(t)
+	defer cleanup()
+
+	r, err := NewGitReop()
+	if err != nil {
+		t.Fatalf("NewGitReop failed: %v", err)
+	}
+
+	// Create and commit a file
+	testFile := filepath.Join(repoDir, "test.txt")
+	if err := os.WriteFile(testFile, []byte("content"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	_, err = r.GitAddFile("test.txt")
+	if err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
+
+	// Try to checkout with an invalid commit hash
+	outputFile := filepath.Join(repoDir, "output.txt")
+	invalidHash := "0000000000000000000000000000000000000000"
+	_, err = r.GitViewFile(RepoPath("test.txt"), invalidHash, outputFile)
+	if err == nil {
+		t.Error("Expected error for invalid commit hash, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "failed to get commit") {
+		t.Errorf("Expected error message about commit, got: %v", err)
+	}
+}
+
+// TestGitViewFile_FileNotInCommit tests error handling when file doesn't exist in commit
+func TestGitViewFile_FileNotInCommit(t *testing.T) {
+	repoDir, cleanup := setupGitTestEnv(t)
+	defer cleanup()
+
+	r, err := NewGitReop()
+	if err != nil {
+		t.Fatalf("NewGitReop failed: %v", err)
+	}
+
+	// Create and commit a file
+	testFile := filepath.Join(repoDir, "existing.txt")
+	if err := os.WriteFile(testFile, []byte("content"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	_, err = r.GitAddFile("existing.txt")
+	if err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
+
+	// Get the commit hash
+	repo, err := r.Open()
+	if err != nil {
+		t.Fatalf("Failed to open repo: %v", err)
+	}
+
+	ref, err := repo.Head()
+	if err != nil {
+		t.Fatalf("Failed to get HEAD: %v", err)
+	}
+	commitHash := ref.Hash().String()
+
+	// Try to checkout a file that doesn't exist in this commit
+	outputFile := filepath.Join(repoDir, "output.txt")
+	_, err = r.GitViewFile(RepoPath("nonexistent.txt"), commitHash, outputFile)
+	if err == nil {
+		t.Error("Expected error for nonexistent file, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "not found") {
+		t.Errorf("Expected error message about file not found, got: %v", err)
 	}
 }
