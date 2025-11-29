@@ -97,7 +97,7 @@ func TestGitAddFile(t *testing.T) {
 	}
 
 	// Add the file (using relative path from repo root)
-	_, err = r.GitAddFile(r.Abs2Repo(testFile))
+	_, err = r.GitAddFile(r.AbsRepo2Repo(testFile))
 	if err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
@@ -474,7 +474,7 @@ func TestGitStatusFile(t *testing.T) {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
 	r, _ := NewGitReop()
-	gitapth := r.Abs2Repo(testFile)
+	gitapth := r.AbsRepo2Repo(testFile)
 	if _, err := r.GitAddFile(gitapth); err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}

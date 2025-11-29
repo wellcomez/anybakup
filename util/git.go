@@ -94,7 +94,7 @@ func (r *GitRepo) load() error {
 	r.root = conf.RepoDir.String()
 	return nil
 }
-func (r GitRepo) Abs2Repo(s string) RepoPath {
+func (r GitRepo) AbsRepo2Repo(s string) RepoPath {
 	rel, err := filepath.Rel(r.root, s)
 	if err != nil {
 		return ""
@@ -160,7 +160,7 @@ func (r GitRepo) Init() error {
 }
 
 func (r GitRepo) GitRmFile(real_path RepoPath) (GitResult, error) {
-	add := GitResultError 
+	add := GitResultError
 	repo, err := r.Open()
 	if err != nil {
 		return GitResultError, fmt.Errorf("git rm err=%v file=%v", err, real_path)
