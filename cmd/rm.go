@@ -19,11 +19,11 @@ var rmCmd = &cobra.Command{
 		filePath := args[0]
 		absFilePath, err := filepath.Abs(filePath)
 		if err != nil {
-			fmt.Printf("Error add file %v: [%v]\n", filePath, err)
+			fmt.Printf("Error rm file %v: [%v]\n", filePath, err)
 			os.Exit(1)
 		}
 		if repo, err := util.NewGitReop(); err != nil {
-			fmt.Printf("Error add file %v: [%v]\n", filePath, err)
+			fmt.Printf("Error rm file %v: [%v]\n", filePath, err)
 			os.Exit(1)
 		} else {
 			yes, err := repo.GitRmFile(repo.Src2Repo(absFilePath))
