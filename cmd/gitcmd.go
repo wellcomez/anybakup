@@ -74,6 +74,20 @@ func GetFile(filePath string, commit string, target string) error {
 	if err != nil {
 		return err
 	}
+
+	// If commit is empty, use HEAD
+	if commit == "" {
+		r, err := repo.Open()
+		if err != nil {
+			return fmt.Errorf("failed to open repo: %v", err)
+		}
+		ref, err := r.Head()
+		if err != nil {
+			return fmt.Errorf("failed to get HEAD: %v", err)
+		}
+		commit = ref.Hash().String()
+	}
+
 	_, err = repo.GitViewFile(repo.Src2Repo(absFilePath), commit, target)
 	if err != nil {
 		return err

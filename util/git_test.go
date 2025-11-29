@@ -413,6 +413,14 @@ func TestGitChangesFile(t *testing.T) {
 			t.Error("Expected date information in changes")
 		}
 	}
+
+	for _, c := range changes {
+		tmpfile := filepath.Join(os.TempDir(), "test.txt."+c.Commit)
+		if _, err := r.GitViewFile("test.txt", c.Commit, tmpfile); err != nil {
+			t.Fatalf("GitViewFile failed: %v", err)
+		}
+		
+	}
 }
 
 // TestGitChangesFile_NoCommits tests getting history for a file with no commits
