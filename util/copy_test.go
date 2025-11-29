@@ -46,6 +46,9 @@ func setupTestEnv(t *testing.T) (repoDir string, cleanup func()) {
 // TestCopyToRepo_SingleFile tests copying a single file
 func TestCopyToRepo_SingleFile(t *testing.T) {
 	repoDir, cleanup := setupTestEnv(t)
+	r := GitRepo{
+		root: repoDir,
+	}
 	defer cleanup()
 
 	// Create a test file
@@ -62,11 +65,11 @@ func TestCopyToRepo_SingleFile(t *testing.T) {
 	}
 
 	// Copy the file
-	dest, err := CopyToRepo(testFile)
+	d, err := r.CopyToRepo(SrcPath(testFile))
 	if err != nil {
 		t.Fatalf("CopyToRepo failed: %v", err)
 	}
-
+	dest := d.ToAbs(r)
 	// Verify destination path
 	expectedDest := filepath.Join(repoDir, testFile[1:])
 	if dest != expectedDest {
@@ -93,6 +96,9 @@ func TestCopyToRepo_SingleFile(t *testing.T) {
 // TestCopyToRepo_Directory tests copying a directory recursively
 func TestCopyToRepo_Directory(t *testing.T) {
 	repoDir, cleanup := setupTestEnv(t)
+	r := GitRepo{
+		root: repoDir,
+	}
 	defer cleanup()
 
 	// Create a test directory structure
@@ -119,11 +125,11 @@ func TestCopyToRepo_Directory(t *testing.T) {
 	}
 
 	// Copy the directory
-	dest, err := CopyToRepo(testDir)
+	gitpath, err := r.CopyToRepo(SrcPath(testDir))
 	if err != nil {
 		t.Fatalf("CopyToRepo failed: %v", err)
 	}
-
+	dest := gitpath.ToAbs(r)
 	// Verify destination path
 	expectedDest := filepath.Join(repoDir, testDir[1:])
 	if dest != expectedDest {
@@ -158,11 +164,14 @@ func TestCopyToRepo_Directory(t *testing.T) {
 
 // TestCopyToRepo_NonExistentSource tests error handling for non-existent source
 func TestCopyToRepo_NonExistentSource(t *testing.T) {
-	_, cleanup := setupTestEnv(t)
+	dir, cleanup := setupTestEnv(t)
+	r := GitRepo{
+		root: dir,
+	}
 	defer cleanup()
 
 	// Try to copy a non-existent file
-	_, err := CopyToRepo("/non/existent/file.txt")
+	_, err := r.CopyToRepo("/non/existent/file.txt")
 	if err == nil {
 		t.Fatal("Expected error for non-existent source, got nil")
 	}
@@ -171,6 +180,7 @@ func TestCopyToRepo_NonExistentSource(t *testing.T) {
 // TestCopyToRepo_NestedDirectories tests copying deeply nested directories
 func TestCopyToRepo_NestedDirectories(t *testing.T) {
 	repoDir, cleanup := setupTestEnv(t)
+	r := GitRepo{root: repoDir}
 	defer cleanup()
 
 	// Create a deeply nested directory structure
@@ -191,7 +201,7 @@ func TestCopyToRepo_NestedDirectories(t *testing.T) {
 	}
 
 	// Copy the directory
-	_, err = CopyToRepo(testDir)
+	_, err = r.CopyToRepo(SrcPath(testDir))
 	if err != nil {
 		t.Fatalf("CopyToRepo failed: %v", err)
 	}

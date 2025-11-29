@@ -15,7 +15,7 @@ func add_file(file string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	dest, err := repo.CopyToRepo(file)
+	dest, err := repo.CopyToRepo(util.SrcPath(file))
 	if err != nil {
 		return "", err
 	}

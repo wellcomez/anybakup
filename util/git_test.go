@@ -97,7 +97,7 @@ func TestGitAddFile(t *testing.T) {
 	}
 
 	// Add the file (using relative path from repo root)
-	_, err = r.GitAddFile("test.txt")
+	_, err = r.GitAddFile(r.Abs2Repo(testFile))
 	if err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
@@ -155,7 +155,7 @@ func TestGitAddFile_MultipleFiles(t *testing.T) {
 
 	// Add all files
 	for _, filename := range files {
-		if _, err := r.GitAddFile(filename); err != nil {
+		if _, err := r.GitAddFile(RepoPath(filename)); err != nil {
 			t.Fatalf("GitAddFile failed for %s: %v", filename, err)
 		}
 	}
@@ -474,7 +474,8 @@ func TestGitStatusFile(t *testing.T) {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
 	r, _ := NewGitReop()
-	if _, err := r.GitAddFile(testFile); err != nil {
+	gitapth := r.Abs2Repo(testFile)
+	if _, err := r.GitAddFile(gitapth); err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
 	// if s, err := GetState(testFile); err != nil {
@@ -502,9 +503,8 @@ func TestGitStatusFile(t *testing.T) {
 	} else if s != GitUntracked {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
-	
-	
-	if _, err := r.GitRmFile(testFile); err != nil {
+
+	if _, err := r.GitRmFile(gitapth); err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
 }

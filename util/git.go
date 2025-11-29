@@ -12,6 +12,7 @@ import (
 
 type (
 	RepoPath string
+	SrcPath  string
 	SysPath  string
 	RepoRoot string
 	GitRepo  struct {
@@ -20,11 +21,23 @@ type (
 	}
 )
 
+func (s SrcPath) Repo(d RepoRoot) RepoPath {
+	rel, err := filepath.Rel("/", string(s))
+	if err != nil {
+		return ""
+	}
+	return RepoPath(rel)
+}
+func (s SrcPath) Sting() string {
+	return string(s)
+}
 func (s RepoPath) Sting() string {
 	return string(s)
 }
-
-
+func (s RepoPath) ToAbs(repo GitRepo) string {
+	r := RepoRoot(repo.root)
+	return r.With(s.Sting())
+}
 func (r GitRepo) rel(s string) (string, error) {
 	if !filepath.IsAbs(s) {
 		// f := filepath.Join(r.root, s)
@@ -41,23 +54,23 @@ func (r GitRepo) rel(s string) (string, error) {
 	return rel, nil
 }
 
-func (conf GitRepo) CopyToRepo(src string) (RepoPath, error) {
+func (conf GitRepo) CopyToRepo(src SrcPath) (RepoPath, error) {
 	// Verify source exists and get its info
-	srcInfo, err := os.Stat(src)
+	srcInfo, err := os.Stat(src.Sting())
 	if err != nil {
 		return "", fmt.Errorf("copytorepo error stat src: %v", err)
 	}
 
 	// Create destination path by appending src path (without leading /) to repo dir
-	ret := RepoPath(conf.AbstoRepo(src))
+	ret := src.Repo(RepoRoot(conf.root))
 
 	reporoot := RepoRoot(conf.root)
 	dest := reporoot.With(ret.Sting())
 	// Copy based on whether src is a file or directory
 	if srcInfo.IsDir() {
-		err = copyDir(src, dest)
+		err = copyDir(src.Sting(), dest)
 	} else {
-		err = copyFile(src, dest)
+		err = copyFile(src.Sting(), dest)
 	}
 
 	if err != nil {
@@ -81,17 +94,29 @@ func (r *GitRepo) load() error {
 	r.root = conf.RepoDir.String()
 	return nil
 }
-func (r GitRepo)AbstoRepo(s string) RepoPath{
-	rel, err := filepath.Rel("/",s)
+func (r GitRepo) Abs2Repo(s string) RepoPath {
+	rel, err := filepath.Rel(r.root, s)
 	if err != nil {
 		return ""
 	}
-	return RepoPath(rel) 
+	return RepoPath(rel)
 }
-func (r GitRepo) pathOfRepo(s RepoPath) string {
-	b := RepoRoot(r.root)
-	return b.With(s.Sting())
+func (r GitRepo) Src2Repo(s string) RepoPath {
+	rel, err := filepath.Rel("/", s)
+	if err != nil {
+		return ""
+	}
+	return RepoPath(rel)
 }
+
+//	func (r GitRepo) Covert2Repo(s RepoPath) string {
+//		b := RepoRoot(r.root)
+//		return b.With(s.Sting())
+//	}
+// func (r GitRepo) AbsOfRepo(s RepoPath) string {
+// 	b := RepoRoot(r.root)
+// 	return b.With(s.Sting())
+// }
 
 func NewGitReop() (*GitRepo, error) {
 	ret := &GitRepo{}
@@ -145,10 +170,10 @@ func (r GitRepo) GitRmFile(real_path RepoPath) (bool, error) {
 		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
 	}
 
-	abspath:=r.pathOfRepo(real_path)
+	abspath := real_path.ToAbs(r)
 	os.Remove(abspath)
 
-	gitfile :=real_path.Sting()
+	gitfile := real_path.Sting()
 	state, err := GetState(gitfile, &r)
 	if err != nil {
 		fmt.Println(err)
@@ -185,7 +210,7 @@ func (r GitRepo) GitRmFile(real_path RepoPath) (bool, error) {
 }
 
 func (r GitRepo) GitAddFile(gitpath RepoPath) (bool, error) {
-	file := r.pathOfRepo(gitpath)
+	file := gitpath.ToAbs(r)
 	gitfile := gitpath.Sting()
 	add := false
 	repo, err := r.Open()
@@ -208,7 +233,7 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (bool, error) {
 	if !yes {
 		return add, fmt.Errorf("no change")
 	}
-	msg := fmt.Sprintf("ADD %v", file)
+	msg := fmt.Sprintf("ADD %v",gitpath) 
 	_, err = w.Commit(msg, &git.CommitOptions{
 		Author: &object.Signature{
 			Name: "anybakup",
@@ -311,15 +336,9 @@ type GitChanges struct {
 
 // GitChangesFile retrieves the commit history for a specific file
 // Returns a formatted string with commit logs
-func (r GitRepo) GitChangesFile(file string) ([]GitChanges, error) {
-	repo, err := r.Open()
-	if err != nil {
-		return nil, fmt.Errorf("git changes %v", err)
-	}
-	gitfile, err := r.rel(file)
-	if err != nil {
-		return nil, fmt.Errorf("git changes %v %v", err, file)
-	}
+func (r GitRepo) GitChangesFile(repoRelPath RepoPath) ([]GitChanges, error) {
+	repo := r.repo
+	gitfile := repoRelPath.Sting()
 
 	// Get commit log with file path filter
 	commitIter, err := repo.Log(&git.LogOptions{
