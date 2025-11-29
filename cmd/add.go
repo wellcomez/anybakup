@@ -10,44 +10,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type result_git_add struct {
-	dest   string
-	err    error
-	resutl util.GitResult
-}
-
-func add_file(file string) (ret result_git_add) {
-	ret = result_git_add{
-		dest:   "",
-		err:    nil,
-		resutl: util.GitResultError,
-	}
-	repo, err := util.NewGitReop()
-	if err != nil {
-		ret.err = err
-		return
-	}
-	dest, err := repo.CopyToRepo(util.SrcPath(file))
-	if err != nil {
-		ret.err = err
-		return
-	}
-	if yes, err := repo.GitAddFile(dest); err != nil {
-		ret.err = err
-	} else {
-		ret.resutl = yes
-		switch yes {
-		case util.GitResultAdd:
-			ret.dest = dest.Sting()
-		case util.GitResultNochange:
-			ret.dest = dest.Sting()
-		default:
-			ret.err = fmt.Errorf("unknown result %v", yes)
-		}
-	}
-	return
-}
-
 // addCmd represents the add command
 var addCmd = &cobra.Command{
 	Use:   "add [file]",
@@ -55,17 +17,11 @@ var addCmd = &cobra.Command{
 	Long:  `Add a file to the repository. This copies the file to the configured repository directory.`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		filePath := args[0]
-		absFilePath, err := filepath.Abs(filePath)
-		if err != nil {
-			fmt.Printf("Error add file %v: [%v]\n", filePath, err)
-			os.Exit(1)
-		}
-		if ret := add_file(absFilePath); ret.err != nil {
-			fmt.Printf("Error add file %v: [%v]\n", filePath, ret.err)
+		if ret := AddFile(args[0]); ret.err != nil {
+			fmt.Printf("Error add file %v: [%v]\n", args[0], ret.err)
 			os.Exit(1)
 		} else {
-			fmt.Printf("add %s to %s\n", filePath, ret.dest)
+			fmt.Printf("add %s to %s\n", args[0], ret.dest)
 		}
 	},
 }
