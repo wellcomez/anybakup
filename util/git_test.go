@@ -419,7 +419,7 @@ func TestGitChangesFile(t *testing.T) {
 		if _, err := r.GitViewFile("test.txt", c.Commit, tmpfile); err != nil {
 			t.Fatalf("GitViewFile failed: %v", err)
 		}
-		
+
 	}
 }
 

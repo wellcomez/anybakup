@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"anybakup/util"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -22,16 +25,21 @@ var addCmd = &cobra.Command{
 		}
 	},
 }
-func run_list_file(filePath string) {
+
+func run_list_file(filePath string, print bool) []util.GitChanges {
 	if logs, err := GetFileLog(filePath); err != nil {
 		fmt.Printf("Error log file %v: [%v]\n", filePath, err)
-		os.Exit(1)
-	} else {
+		return []util.GitChanges{}
+	} else if print {
 		for i, l := range logs {
-			fmt.Printf("%3d: %-10s %-10s %-10s\n", i, l.Commit, l.Author, l.Date)
+			fmt.Printf("%3d: %-10s %-10s %-10s\n", i+1, l.Commit, l.Author, l.Date)
 		}
+		return logs
+	} else {
+		return logs
 	}
 }
+
 var logCmd = &cobra.Command{
 	Use:   "log [file]",
 	Short: "log a file to the repository",
@@ -39,7 +47,7 @@ var logCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		filePath := args[0]
-		run_list_file(filePath)
+		run_list_file(filePath, true)
 	},
 }
 var getCmd = &cobra.Command{
@@ -54,9 +62,20 @@ var getCmd = &cobra.Command{
 		if len(args) == 3 {
 			target = args[1]
 			commit = args[2]
-		}else{
-			run_list_file(filePath)	
+		} else {
+			run_list_file(filePath, true)
 			os.Exit(1)
+		}
+		// try to convert commit to int
+		if commit != "" {
+			logs := run_list_file(filePath, false)
+			commit = strings.TrimSpace(commit)
+			if n, err := strconv.Atoi(commit); err == nil {
+				commit = logs[n-1].Commit
+			} else {
+				fmt.Printf("Error get file %v: [%v]\n", filePath, err)
+				os.Exit(1)
+			}
 		}
 		if err := GetFile(filePath, commit, target); err != nil {
 			fmt.Printf("Error get file %v: [%v]\n", filePath, err)
