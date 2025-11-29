@@ -31,8 +31,13 @@ var rmCmd = &cobra.Command{
 				fmt.Printf("Error add file %v: [%v]\n", filePath, err)
 				os.Exit(1)
 			}
-			if yes {
-				fmt.Printf("rm %s from %s\n", filePath, absFilePath)
+			switch yes {
+			case util.GitResultRm:
+				fmt.Printf("rm %s from %s\n", filePath, absFilePath)		
+			case util.GitResultNochange:
+				fmt.Printf("No need to rm %s from %s\n", filePath, absFilePath)		
+			default:
+				fmt.Printf("rm %s from %s\n", filePath, absFilePath)		
 			}
 		}
 

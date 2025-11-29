@@ -159,11 +159,11 @@ func (r GitRepo) Init() error {
 	return nil
 }
 
-func (r GitRepo) GitRmFile(real_path RepoPath) (bool, error) {
-	add := false
+func (r GitRepo) GitRmFile(real_path RepoPath) (GitResult, error) {
+	add := GitResultError 
 	repo, err := r.Open()
 	if err != nil {
-		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
+		return GitResultError, fmt.Errorf("git rm err=%v file=%v", err, real_path)
 	}
 	w, err := repo.Worktree()
 	if err != nil {
@@ -193,7 +193,8 @@ func (r GitRepo) GitRmFile(real_path RepoPath) (bool, error) {
 	fmt.Printf("%-10s rm %-50s %v\n", "after", gitfile, state)
 	yes := state == GitAdded || state == GitUnmodified
 	if !yes {
-		return add, fmt.Errorf("no change")
+		add = GitResultNochange
+		return add, nil
 	}
 	msg := fmt.Sprintf("RM %v", real_path)
 	_, err = w.Commit(msg, &git.CommitOptions{
@@ -205,14 +206,23 @@ func (r GitRepo) GitRmFile(real_path RepoPath) (bool, error) {
 	if err != nil {
 		return add, fmt.Errorf("git commit err=%v file=%v:%v", err, gitfile, real_path)
 	}
-	add = true
+	add = GitResultRm
 	return add, nil
 }
 
-func (r GitRepo) GitAddFile(gitpath RepoPath) (bool, error) {
+type GitResult string
+
+const (
+	GitResultAdd      GitResult = "add"
+	GitResultRm       GitResult = "rm"
+	GitResultNochange GitResult = "nochange"
+	GitResultError    GitResult = "error"
+)
+
+func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 	file := gitpath.ToAbs(r)
 	gitfile := gitpath.Sting()
-	add := false
+	add := GitResultError
 	repo, err := r.Open()
 	if err != nil {
 		return add, fmt.Errorf("git add %v", err)
@@ -231,9 +241,9 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (bool, error) {
 	fmt.Printf("%-10s add %-50s %v\n", "after", file, state)
 	yes := state == GitAdded || state == GitUnmodified
 	if !yes {
-		return add, fmt.Errorf("no change")
+		return GitResultNochange, nil
 	}
-	msg := fmt.Sprintf("ADD %v",gitpath) 
+	msg := fmt.Sprintf("ADD %v", gitpath)
 	_, err = w.Commit(msg, &git.CommitOptions{
 		Author: &object.Signature{
 			Name: "anybakup",
@@ -243,7 +253,7 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (bool, error) {
 	if err != nil {
 		return add, fmt.Errorf("git commit %v %v", err, file)
 	}
-	add = true
+	add = GitResultAdd
 	return add, nil
 }
 

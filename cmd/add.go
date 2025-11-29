@@ -10,21 +10,42 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func add_file(file string) (string, error) {
+type result_git_add struct {
+	dest   string
+	err    error
+	resutl util.GitResult
+}
+
+func add_file(file string) (ret result_git_add) {
+	ret = result_git_add{
+		dest:   "",
+		err:    nil,
+		resutl: util.GitResultError,
+	}
 	repo, err := util.NewGitReop()
 	if err != nil {
-		return "", err
+		ret.err = err
+		return
 	}
 	dest, err := repo.CopyToRepo(util.SrcPath(file))
 	if err != nil {
-		return "", err
+		ret.err = err
+		return
 	}
 	if yes, err := repo.GitAddFile(dest); err != nil {
-		return "", err
-	} else if !yes {
-		return "", fmt.Errorf("no change")
+		ret.err = err
+	} else {
+		ret.resutl = yes
+		switch yes {
+		case util.GitResultAdd:
+			ret.dest = dest.Sting()
+		case util.GitResultNochange:
+			ret.dest = dest.Sting()
+		default:
+			ret.err = fmt.Errorf("unknown result %v", yes)
+		}
 	}
-	return dest.Sting(), nil
+	return
 }
 
 // addCmd represents the add command
@@ -40,11 +61,11 @@ var addCmd = &cobra.Command{
 			fmt.Printf("Error add file %v: [%v]\n", filePath, err)
 			os.Exit(1)
 		}
-		if dest, err := add_file(absFilePath); err != nil {
-			fmt.Printf("Error add file %v: [%v]\n", filePath, err)
+		if ret := add_file(absFilePath); ret.err != nil {
+			fmt.Printf("Error add file %v: [%v]\n", filePath, ret.err)
 			os.Exit(1)
 		} else {
-			fmt.Printf("add %s to %s\n", filePath, dest)
+			fmt.Printf("add %s to %s\n", filePath, ret.dest)
 		}
 	},
 }
