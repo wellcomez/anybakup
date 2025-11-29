@@ -393,9 +393,9 @@ type GitChanges struct {
 	Message string
 }
 
-// GitChangesFile retrieves the commit history for a specific file
+// GitLogFile retrieves the commit history for a specific file
 // Returns a formatted string with commit logs
-func (r GitRepo) GitChangesFile(repoRelPath RepoPath) ([]GitChanges, error) {
+func (r GitRepo) GitLogFile(repoRelPath RepoPath) ([]GitChanges, error) {
 	repo := r.repo
 	gitfile := repoRelPath.Sting()
 
@@ -413,7 +413,7 @@ func (r GitRepo) GitChangesFile(repoRelPath RepoPath) ([]GitChanges, error) {
 	err = commitIter.ForEach(func(c *object.Commit) error {
 		commitCount++
 		r := GitChanges{
-			Commit:  c.Hash.String()[:7],
+			Commit:  c.Hash.String(),
 			Author:  c.Author.Name,
 			Date:    c.Author.When.Format("2006-01-02 15:04:05"),
 			Message: c.Message,

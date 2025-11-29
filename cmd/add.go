@@ -86,7 +86,7 @@ var logCmd = &cobra.Command{
 			fmt.Printf("Error log file %v: [%v]\n", filePath, err)
 			os.Exit(1)
 		}
-		logs, err := repo.GitChangesFile(repo.Src2Repo(absFilePath))
+		logs, err := repo.GitLogFile(repo.Src2Repo(absFilePath))
 		if err != nil {
 			fmt.Printf("Error %v", err)
 		}
@@ -112,7 +112,7 @@ var viewCmd = &cobra.Command{
 			fmt.Printf("Error log file %v: [%v]\n", filePath, err)
 			os.Exit(1)
 		}
-		logs, err := repo.GitChangesFile(repo.Src2Repo(absFilePath))
+		logs, err := repo.GitLogFile(repo.Src2Repo(absFilePath))
 		if err != nil {
 			fmt.Printf("Error %v", err)
 		}
@@ -121,6 +121,7 @@ var viewCmd = &cobra.Command{
 		}
 	},
 }
+
 func init() {
 	rootCmd.AddCommand(addCmd)
 	rootCmd.AddCommand(logCmd)

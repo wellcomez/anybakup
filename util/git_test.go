@@ -385,7 +385,7 @@ func TestGitChangesFile(t *testing.T) {
 	}
 
 	// Get change history
-	changes, err := r.GitChangesFile("test.txt")
+	changes, err := r.GitLogFile("test.txt")
 	if err != nil {
 		t.Fatalf("GitChangesFile failed: %v", err)
 	}
@@ -441,7 +441,7 @@ func TestGitChangesFile_NoCommits(t *testing.T) {
 	}
 
 	// Try to get history for a file that was never committed
-	changes, err := r.GitChangesFile("nonexistent.txt")
+	changes, err := r.GitLogFile("nonexistent.txt")
 	if err == nil {
 		t.Fatalf("GitChangesFile failed: %v", err)
 	}
