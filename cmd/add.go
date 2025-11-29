@@ -2,12 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-
-	"anybakup/util"
-
 	"github.com/spf13/cobra"
+	"os"
 )
 
 // addCmd represents the add command
@@ -43,29 +39,21 @@ var logCmd = &cobra.Command{
 		}
 	},
 }
-var viewCmd = &cobra.Command{
-	Use:   "view [file]",
-	Short: "view a file to the repository",
-	Long:  `view a file to the repository. This copies the file to the configured repository directory.`,
-	Args:  cobra.ExactArgs(2),
+var getCmd = &cobra.Command{
+	Use:   "get [file] [target] [commit]",
+	Short: "get a file from the repository",
+	Long:  `get a file from the repository. This copies the file to the configured repository directory.`,
+	Args:  cobra.ExactArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
 		filePath := args[0]
-		absFilePath, err := filepath.Abs(filePath)
-		if err != nil {
-			fmt.Printf("Error log file %v: [%v]\n", filePath, err)
+		target := args[1]
+		commit := args[2]
+		if err := GetFile(filePath, commit, target); err != nil {
+			fmt.Printf("Error get file %v: [%v]\n", filePath, err)
 			os.Exit(1)
-		}
-		repo, err := util.NewGitReop()
-		if err != nil {
-			fmt.Printf("Error log file %v: [%v]\n", filePath, err)
-			os.Exit(1)
-		}
-		logs, err := repo.GitLogFile(repo.Src2Repo(absFilePath))
-		if err != nil {
-			fmt.Printf("Error %v", err)
-		}
-		for _, l := range logs {
-			fmt.Printf("%-10s %-10s %-10s\n", l.Commit, l.Author, l.Date)
+		} else {
+			fmt.Printf("get %s from %s to %s\n", filePath, commit, target)
+			os.Exit(0)
 		}
 	},
 }
@@ -73,5 +61,5 @@ var viewCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(addCmd)
 	rootCmd.AddCommand(logCmd)
-	rootCmd.AddCommand(viewCmd)
+	rootCmd.AddCommand(getCmd)
 }

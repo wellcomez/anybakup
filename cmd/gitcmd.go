@@ -64,3 +64,19 @@ func AddFile(arg string) (ret result_git_add) {
 	}
 	return
 }
+func GetFile(filePath string, commit string, target string) error {
+	var err error
+	absFilePath, err := filepath.Abs(filePath)
+	if err != nil {
+		return err
+	}
+	repo, err := util.NewGitReop()
+	if err != nil {
+		return err
+	}
+	_, err = repo.GitViewFile(repo.Src2Repo(absFilePath), commit, target)
+	if err != nil {
+		return err
+	}
+	return nil
+}
