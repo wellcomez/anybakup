@@ -34,7 +34,7 @@ func (c *Config) Load() error {
 	return yaml.Unmarshal(b, c)
 }
 func (c *Config) configfile() (string, error) {
-	configDir, err := c.configdir()
+	configDir, err := c.Configdir()
 	if err != nil {
 		return "", err
 	}
@@ -43,7 +43,7 @@ func (c *Config) configfile() (string, error) {
 	return configFilePath, nil
 }
 
-func (Config) configdir() (string, error) {
+func (Config) Configdir() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("error getting home directory: %v", err)

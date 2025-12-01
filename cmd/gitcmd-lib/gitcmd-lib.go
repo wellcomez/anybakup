@@ -25,6 +25,7 @@ import (
 )
 
 // C-exportable wrapper for GetFileLog
+//
 //export GetFileLogC
 func GetFileLogC(filePath *C.char) *C.GitChangeArray {
 	if filePath == nil {
@@ -64,22 +65,45 @@ func GetFileLogC(filePath *C.char) *C.GitChangeArray {
 }
 
 // C-exportable wrapper for AddFile
-//export AddFileC
-func AddFileC(filePath *C.char) *C.char {
+//
+//export RmFileC
+func RmFileC(filePath *C.char) int {
 	if filePath == nil {
-		return C.CString("error: file path is nil")
+		// return C.CString("error: file path is nil")
+		return -1
+	}
+
+	goFilePath := C.GoString(filePath)
+	err := cmd.RmFile(goFilePath)
+	if err != nil {
+		return -2
+		// return C.CString(fmt.Sprintf("error: %v", err))
+	}
+
+	return 0
+}
+
+// C-exportable wrapper for AddFile
+//
+//export AddFileC
+func AddFileC(filePath *C.char) int {
+	if filePath == nil {
+		// return C.CString("error: file path is nil")
+		return -1
 	}
 
 	goFilePath := C.GoString(filePath)
 	result := cmd.AddFile(goFilePath)
 	if result.Err != nil {
-		return C.CString(fmt.Sprintf("error: %v", result.Err))
+		return -2
+		// return C.CString(fmt.Sprintf("error: %v", result.Err))
 	}
 
-	return C.CString(fmt.Sprintf("success: dest=%s, result=%v", result.Dest, result.Result))
+	return 0
 }
 
 // C-exportable wrapper for GetFile
+//
 //export GetFileC
 func GetFileC(filePath *C.char, commit *C.char, target *C.char) *C.char {
 	if filePath == nil || target == nil {
@@ -99,14 +123,16 @@ func GetFileC(filePath *C.char, commit *C.char, target *C.char) *C.char {
 }
 
 // Helper function to free C strings
+//
 //export FreeString
-func FreeString(str *C.char) {
-	if str != nil {
-		C.free(unsafe.Pointer(str))
-	}
-}
+// func FreeString(str *C.char) {
+// 	if str != nil {
+// 		C.free(unsafe.Pointer(str))
+// 	}
+// }
 
 // Helper function to free GitChangeArray
+//
 //export FreeGitChangeArray
 func FreeGitChangeArray(array *C.GitChangeArray) {
 	if array == nil {

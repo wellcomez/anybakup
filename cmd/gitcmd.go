@@ -3,6 +3,7 @@ package cmd
 import (
 	"anybakup/util"
 	"fmt"
+	"os"
 	"path/filepath"
 )
 
@@ -64,7 +65,43 @@ func AddFile(arg string) (ret Result_git_add) {
 			ret.Err = fmt.Errorf("unknown result %v", yes)
 		}
 	}
+	isfile, err := IsFile(file)
+	BackupOptAdd(file, ret.Dest, isfile)
 	return
+}
+
+func RmFile(arg string) error {
+	file, err := filepath.Abs(arg)
+	if err != nil {
+		return err
+	}
+	repo, err := util.NewGitReop()
+	if err != nil {
+		return err
+	}
+	if yes, err := repo.GitRmFile(repo.Src2Repo(file)); err != nil {
+		return err
+	} else {
+		switch yes {
+		case util.GitResultRm:
+		case util.GitResultNochange:
+			return nil
+		default:
+			return fmt.Errorf("unknown result %v", yes)
+		}
+	}
+	return nil
+	// BackupOptAdd(file, ret.Dest, isfile)
+	// return
+}
+
+func IsFile(file string) (bool, error) {
+	if st, err := os.Stat(file); err != nil {
+		return true, err
+	} else {
+		return st.Mode().IsRegular(), nil
+	}
+
 }
 
 // GetFile retrieves a file from a specific commit
