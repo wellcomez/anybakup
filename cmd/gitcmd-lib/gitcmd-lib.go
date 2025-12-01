@@ -15,6 +15,20 @@ typedef struct {
 	GitChange* changes;
 	int count;
 } GitChangeArray;
+ 
+typedef struct {
+	int64_t id;
+	char* src_file;
+	char* dest_file;
+	int is_file;  // 1 for true, 0 for false
+	char* add_time;
+	char* update_time;
+} FileOperationC;
+
+typedef struct {
+	FileOperationC* operations;
+	int count;
+} FileOperationArray;
 */
 import "C"
 
@@ -44,12 +58,19 @@ func GetFileLogC(filePath *C.char) *C.GitChangeArray {
 
 	// Allocate C array
 	array := (*C.GitChangeArray)(C.malloc(C.size_t(unsafe.Sizeof(C.GitChangeArray{}))))
+	if array == nil {
+		return nil
+	}
 	count := len(logs)
 	*array = C.GitChangeArray{}
 	array.count = C.int(count)
 
 	// Allocate memory for the array of GitChange structs
 	changesPtr := C.malloc(C.size_t(count) * C.size_t(unsafe.Sizeof(C.GitChange{})))
+	if changesPtr == nil {
+		C.free(unsafe.Pointer(array))
+		return nil
+	}
 	array.changes = (*C.GitChange)(changesPtr)
 
 	// Convert each log entry to C struct
@@ -59,6 +80,138 @@ func GetFileLogC(filePath *C.char) *C.GitChangeArray {
 		change.author = C.CString(log.Author)
 		change.date = C.CString(log.Date)
 		change.message = C.CString(log.Message)
+
+		// Check if any CString allocation failed
+		if change.commit == nil || change.author == nil || change.date == nil || change.message == nil {
+			// Free already allocated strings and memory
+			for j := range i {
+				prevChange := (*C.GitChange)(unsafe.Pointer(uintptr(changesPtr) + uintptr(j)*unsafe.Sizeof(C.GitChange{})))
+				if prevChange.commit != nil {
+					C.free(unsafe.Pointer(prevChange.commit))
+				}
+				if prevChange.author != nil {
+					C.free(unsafe.Pointer(prevChange.author))
+				}
+				if prevChange.date != nil {
+					C.free(unsafe.Pointer(prevChange.date))
+				}
+				if prevChange.message != nil {
+					C.free(unsafe.Pointer(prevChange.message))
+				}
+			}
+			C.free(unsafe.Pointer(changesPtr))
+			C.free(unsafe.Pointer(array))
+			return nil
+		}
+	}
+
+	return array
+}
+
+// C-exportable wrapper for BackupOptAdd
+//
+//export BackupOptAddC
+func BackupOptAddC(srcFile *C.char, destFile *C.char, isFile C.int) C.int {
+	if srcFile == nil || destFile == nil {
+		return -1
+	}
+
+	goSrcFile := C.GoString(srcFile)
+	goDestFile := C.GoString(destFile)
+	goIsFile := isFile != 0
+
+	err := cmd.BackupOptAdd(goSrcFile, goDestFile, goIsFile)
+	if err != nil {
+		return -2
+	}
+
+	return 0
+}
+
+// C-exportable wrapper for BackupOptRm
+//
+//export BackupOptRmC
+func BackupOptRmC(file *C.char) C.int {
+	if file == nil {
+		return -1
+	}
+
+	goFile := C.GoString(file)
+	err := cmd.BackupOptRm(goFile)
+	if err != nil {
+		return -2
+	}
+
+	return 0
+}
+
+// C-exportable wrapper for GetAllOpt
+// This function returns file operations using the dedicated FileOperationArray structure for C interop.
+//
+//export GetAllOptC
+func GetAllOptC() *C.FileOperationArray {
+	operations, err := cmd.GetAllOpt()
+	if err != nil {
+		return nil
+	}
+
+	if len(operations) == 0 {
+		return nil
+	}
+
+	// Allocate C array
+	array := (*C.FileOperationArray)(C.malloc(C.size_t(unsafe.Sizeof(C.FileOperationArray{}))))
+	if array == nil {
+		return nil
+	}
+	count := len(operations)
+	*array = C.FileOperationArray{}
+	array.count = C.int(count)
+
+	// Allocate memory for the array of FileOperationC structs
+	operationsPtr := C.malloc(C.size_t(count) * C.size_t(unsafe.Sizeof(C.FileOperationC{})))
+	if operationsPtr == nil {
+		C.free(unsafe.Pointer(array))
+		return nil
+	}
+	array.operations = (*C.FileOperationC)(operationsPtr)
+
+	// Convert each FileOperation to a FileOperationC struct
+	for i, op := range operations {
+		cOp := (*C.FileOperationC)(unsafe.Pointer(uintptr(operationsPtr) + uintptr(i)*unsafe.Sizeof(C.FileOperationC{})))
+		cOp.id = C.int64_t(op.ID)
+		cOp.src_file = C.CString(op.SrcFile)
+		cOp.dest_file = C.CString(op.DestFile)
+		if op.IsFile {
+			cOp.is_file = 1
+		} else {
+			cOp.is_file = 0
+		}
+		cOp.add_time = C.CString(op.AddTime.Format("2006-01-02 15:04:05"))
+		cOp.update_time = C.CString(op.UpdateTime.Format("2006-01-02 15:04:05"))
+
+		// Check if any CString allocation failed
+		if cOp.src_file == nil || cOp.dest_file == nil || cOp.add_time == nil || cOp.update_time == nil {
+			// Free already allocated strings and memory
+			for j := range i {
+				prevOp := (*C.FileOperationC)(unsafe.Pointer(uintptr(operationsPtr) + uintptr(j)*unsafe.Sizeof(C.FileOperationC{})))
+				if prevOp.src_file != nil {
+					C.free(unsafe.Pointer(prevOp.src_file))
+				}
+				if prevOp.dest_file != nil {
+					C.free(unsafe.Pointer(prevOp.dest_file))
+				}
+				if prevOp.add_time != nil {
+					C.free(unsafe.Pointer(prevOp.add_time))
+				}
+				if prevOp.update_time != nil {
+					C.free(unsafe.Pointer(prevOp.update_time))
+				}
+			}
+			C.free(unsafe.Pointer(operationsPtr))
+			C.free(unsafe.Pointer(array))
+			return nil
+		}
 	}
 
 	return array
@@ -67,7 +220,7 @@ func GetFileLogC(filePath *C.char) *C.GitChangeArray {
 // C-exportable wrapper for AddFile
 //
 //export RmFileC
-func RmFileC(filePath *C.char) int {
+func RmFileC(filePath *C.char) C.int {
 	if filePath == nil {
 		// return C.CString("error: file path is nil")
 		return -1
@@ -86,7 +239,7 @@ func RmFileC(filePath *C.char) int {
 // C-exportable wrapper for AddFile
 //
 //export AddFileC
-func AddFileC(filePath *C.char) int {
+func AddFileC(filePath *C.char) C.int {
 	if filePath == nil {
 		// return C.CString("error: file path is nil")
 		return -1
@@ -125,11 +278,11 @@ func GetFileC(filePath *C.char, commit *C.char, target *C.char) *C.char {
 // Helper function to free C strings
 //
 //export FreeString
-// func FreeString(str *C.char) {
-// 	if str != nil {
-// 		C.free(unsafe.Pointer(str))
-// 	}
-// }
+func FreeString(str *C.char) {
+	if str != nil {
+		C.free(unsafe.Pointer(str))
+	}
+}
 
 // Helper function to free GitChangeArray
 //
@@ -141,7 +294,7 @@ func FreeGitChangeArray(array *C.GitChangeArray) {
 
 	// Free each GitChange struct's strings
 	if array.changes != nil {
-		for i := 0; i < int(array.count); i++ {
+		for i := range int(array.count) {
 			change := (*C.GitChange)(unsafe.Pointer(uintptr(unsafe.Pointer(array.changes)) + uintptr(i)*unsafe.Sizeof(C.GitChange{})))
 			if change.commit != nil {
 				C.free(unsafe.Pointer(change.commit))
@@ -161,6 +314,39 @@ func FreeGitChangeArray(array *C.GitChangeArray) {
 	}
 
 	// Free the GitChangeArray struct itself
+	C.free(unsafe.Pointer(array))
+}
+
+// Helper function to free FileOperationArray
+//
+//export FreeFileOperationArray
+func FreeFileOperationArray(array *C.FileOperationArray) {
+	if array == nil {
+		return
+	}
+
+	// Free each FileOperationC struct's strings
+	if array.operations != nil {
+		for i := range int(array.count) {
+			op := (*C.FileOperationC)(unsafe.Pointer(uintptr(unsafe.Pointer(array.operations)) + uintptr(i)*unsafe.Sizeof(C.FileOperationC{})))
+			if op.src_file != nil {
+				C.free(unsafe.Pointer(op.src_file))
+			}
+			if op.dest_file != nil {
+				C.free(unsafe.Pointer(op.dest_file))
+			}
+			if op.add_time != nil {
+				C.free(unsafe.Pointer(op.add_time))
+			}
+			if op.update_time != nil {
+				C.free(unsafe.Pointer(op.update_time))
+			}
+		}
+		// Free the array of FileOperationC structs
+		C.free(unsafe.Pointer(array.operations))
+	}
+
+	// Free the FileOperationArray struct itself
 	C.free(unsafe.Pointer(array))
 }
 

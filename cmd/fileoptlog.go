@@ -81,13 +81,38 @@ func BackupOptAdd(srcFile, destFile string, isFile bool) error {
 	}
 	defer db.Close()
 
-	query := `
-	INSERT INTO file_operations (srcfile, destfile, isfile, add_time, update_time)
-	VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+	// Check if the entry already exists
+	checkQuery := `
+	SELECT COUNT(*) FROM file_operations 
+	WHERE srcfile = ?`
 
-	_, err = db.db.Exec(query, srcFile, destFile, isFile)
+	var count int
+	err = db.db.QueryRow(checkQuery, srcFile).Scan(&count)
 	if err != nil {
-		return fmt.Errorf("failed to insert file operation: %v", err)
+		return fmt.Errorf("failed to check existing file operation: %v", err)
+	}
+
+	if count > 0 {
+		// Update the existing entry with a new update_time
+		updateQuery := `
+		UPDATE file_operations 
+		SET destfile = ?, isfile = ?, update_time = CURRENT_TIMESTAMP 
+		WHERE srcfile = ?`
+
+		_, err = db.db.Exec(updateQuery, destFile, isFile, srcFile)
+		if err != nil {
+			return fmt.Errorf("failed to update file operation: %v", err)
+		}
+	} else {
+		// Insert a new entry
+		insertQuery := `
+		INSERT INTO file_operations (srcfile, destfile, isfile, add_time, update_time)
+		VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+
+		_, err = db.db.Exec(insertQuery, srcFile, destFile, isFile)
+		if err != nil {
+			return fmt.Errorf("failed to insert file operation: %v", err)
+		}
 	}
 
 	return nil
