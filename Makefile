@@ -107,6 +107,26 @@ lib:
 	$(GO) build -buildmode=c-shared -o $(BUILD_DIR)/libgitcmd.so ./cmd/gitcmd-lib
 	@echo "gitcmd dynamic library build completed!"
 
+# Build and run C test for the dynamic library
+test-lib: lib
+	@echo "Building C test program..."
+	gcc -o $(BUILD_DIR)/test_gitcmd test_gitcmd.c -L$(BUILD_DIR) -lgitcmd -Wl,-rpath,$(abspath $(BUILD_DIR))
+	@echo "Running C test program..."
+	./$(BUILD_DIR)/test_gitcmd
+
+# Build and run C test with real files
+test-lib-real: lib
+	@echo "Building C test program with real files..."
+	gcc -o $(BUILD_DIR)/test_gitcmd_real test_gitcmd_real.c -L$(BUILD_DIR) -lgitcmd -Wl,-rpath,$(abspath $(BUILD_DIR))
+	@echo "Running C test program with real files..."
+	./$(BUILD_DIR)/test_gitcmd_real
+
+# Clean test and library artifacts
+clean-lib:
+	@echo "Cleaning library and test artifacts..."
+	rm -f $(BUILD_DIR)/libgitcmd.so $(BUILD_DIR)/libgitcmd.h $(BUILD_DIR)/test_gitcmd $(BUILD_DIR)/test_gitcmd_real
+	@echo "Clean completed!"
+
 # Initialize the project after cloning
 init:
 	@echo "Initializing project..."
@@ -135,4 +155,7 @@ help:
 	@echo "  build-windows-amd64  - Build for Windows AMD64"
 	@echo "  build-all      - Build for all platforms"
 	@echo "  lib            - Build cmd/gitcmd.go as a dynamic library"
+	@echo "  test-lib       - Build and run C test for the dynamic library"
+	@echo "  test-lib-real  - Build and run C test with real files"
+	@echo "  clean-lib      - Clean library and test artifacts"
 	@echo "  help           - Show this help message"
