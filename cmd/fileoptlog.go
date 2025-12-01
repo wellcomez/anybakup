@@ -110,3 +110,35 @@ func BackupOptRm(file string) error {
 
 	return nil
 }
+
+func GetAllOpt() ([]FileOperation, error) {
+	db, err := NewSqldb()
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	query := `SELECT id, srcfile, destfile, isfile, add_time, update_time FROM file_operations ORDER BY add_time DESC`
+
+	rows, err := db.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query file operations: %v", err)
+	}
+	defer rows.Close()
+
+	var operations []FileOperation
+	for rows.Next() {
+		var op FileOperation
+		err := rows.Scan(&op.ID, &op.SrcFile, &op.DestFile, &op.IsFile, &op.AddTime, &op.UpdateTime)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan file operation: %v", err)
+		}
+		operations = append(operations, op)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating over rows: %v", err)
+	}
+
+	return operations, nil
+}
