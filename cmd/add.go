@@ -17,11 +17,11 @@ var addCmd = &cobra.Command{
 	Long:  `Add a file to the repository. This copies the file to the configured repository directory.`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		if ret := AddFile(args[0]); ret.err != nil {
-			fmt.Printf("Error add file %v: [%v]\n", args[0], ret.err)
+		if ret := AddFile(args[0]); ret.Err != nil {
+			fmt.Printf("Error add file %v: [%v]\n", args[0], ret.Err)
 			os.Exit(1)
 		} else {
-			fmt.Printf("add %s to %s\n", args[0], ret.dest)
+			fmt.Printf("add %s to %s\n", args[0], ret.Dest)
 		}
 	},
 }

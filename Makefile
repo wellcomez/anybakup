@@ -101,6 +101,12 @@ build-windows-amd64:
 build-all: build-linux-amd64 build-linux-arm64 build-darwin-amd64 build-darwin-arm64 build-windows-amd64
 	@echo "All builds completed!"
 
+# Build cmd/gitcmd.go as a dynamic library
+lib:
+	@echo "Building gitcmd dynamic library..."
+	$(GO) build -buildmode=c-shared -o $(BUILD_DIR)/libgitcmd.so ./cmd/gitcmd-lib
+	@echo "gitcmd dynamic library build completed!"
+
 # Initialize the project after cloning
 init:
 	@echo "Initializing project..."
@@ -128,4 +134,5 @@ help:
 	@echo "  build-darwin-arm64   - Build for macOS ARM64"
 	@echo "  build-windows-amd64  - Build for Windows AMD64"
 	@echo "  build-all      - Build for all platforms"
+	@echo "  lib            - Build cmd/gitcmd.go as a dynamic library"
 	@echo "  help           - Show this help message"

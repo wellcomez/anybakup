@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 )
 
+// GetFileLog returns the git log for a specific file
 func GetFileLog(filePath string) ([]util.GitChanges, error) {
 	absFilePath, err := filepath.Abs(filePath)
 	if err != nil {
@@ -22,48 +23,51 @@ func GetFileLog(filePath string) ([]util.GitChanges, error) {
 	return logs, nil
 }
 
-type result_git_add struct {
-	dest   string
-	err    error
-	resutl util.GitResult
+type Result_git_add struct {
+	Dest   string
+	Err    error
+	Result util.GitResult
 }
 
-func AddFile(arg string) (ret result_git_add) {
+// AddFile adds a file to the git repository
+func AddFile(arg string) (ret Result_git_add) {
 	file, err := filepath.Abs(arg)
 	if err != nil {
-		ret.err = err
+		ret.Err = err
 		return
 	}
-	ret = result_git_add{
-		dest:   "",
-		err:    nil,
-		resutl: util.GitResultError,
+	ret = Result_git_add{
+		Dest:   "",
+		Err:    nil,
+		Result: util.GitResultError,
 	}
 	repo, err := util.NewGitReop()
 	if err != nil {
-		ret.err = err
+		ret.Err = err
 		return
 	}
 	dest, err := repo.CopyToRepo(util.SrcPath(file))
 	if err != nil {
-		ret.err = err
+		ret.Err = err
 		return
 	}
 	if yes, err := repo.GitAddFile(dest); err != nil {
-		ret.err = err
+		ret.Err = err
 	} else {
-		ret.resutl = yes
+		ret.Result = yes
 		switch yes {
 		case util.GitResultAdd:
-			ret.dest = dest.Sting()
+			ret.Dest = dest.Sting()
 		case util.GitResultNochange:
-			ret.dest = dest.Sting()
+			ret.Dest = dest.Sting()
 		default:
-			ret.err = fmt.Errorf("unknown result %v", yes)
+			ret.Err = fmt.Errorf("unknown result %v", yes)
 		}
 	}
 	return
 }
+
+// GetFile retrieves a file from a specific commit
 func GetFile(filePath string, commit string, target string) error {
 	var err error
 	absFilePath, err := filepath.Abs(filePath)
