@@ -24,7 +24,12 @@ all: check test build
 # Build the project
 build:
 	@echo "Building $(BINARY_NAME) version $(VERSION)..."
+	@mkdir -p temp_test
+	@mv test_*.c temp_test/ 2>/dev/null || true
+	@mv test_*.py temp_test/ 2>/dev/null || true
 	$(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PATH)
+	@mv temp_test/* . 2>/dev/null || true
+	@rmdir temp_test/ 2>/dev/null || true
 	@echo "Build completed successfully!"
 
 # Install the project (go install)
@@ -38,6 +43,10 @@ clean:
 	@echo "Cleaning build artifacts..."
 	rm -rf $(BUILD_DIR)
 	@echo "Clean completed!"
+
+# Clean all including test artifacts
+clean-all: clean clean-lib
+	@echo "Cleaning all artifacts including test files..."
 
 # Run tests
 test:
@@ -158,4 +167,5 @@ help:
 	@echo "  test-lib       - Build and run C test for the dynamic library"
 	@echo "  test-lib-real  - Build and run C test with real files"
 	@echo "  clean-lib      - Clean library and test artifacts"
+	@echo "  clean-all      - Clean all artifacts including test files"
 	@echo "  help           - Show this help message"

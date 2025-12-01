@@ -66,20 +66,20 @@ func TestAddFile(t *testing.T) {
 
 	// Test AddFile
 	result := AddFile(testFile)
-	if result.err != nil {
-		t.Fatalf("AddFile failed: %v", result.err)
+	if result.Err != nil {
+		t.Fatalf("AddFile failed: %v", result.Err)
 	}
 
-	if result.resutl != util.GitResultAdd {
-		t.Errorf("Expected GitResultAdd, got %v", result.resutl)
+	if result.Result != util.GitResultAdd {
+		t.Errorf("Expected GitResultAdd, got %v", result.Result)
 	}
 
-	if result.dest == "" {
+	if result.Dest == "" {
 		t.Error("Expected non-empty dest path")
 	}
 
 	// Verify file was copied to repo
-	copiedFile := filepath.Join(repoDir, result.dest)
+	copiedFile := filepath.Join(repoDir, result.Dest)
 	content, err := os.ReadFile(copiedFile)
 	if err != nil {
 		t.Fatalf("Failed to read copied file: %v", err)
@@ -91,11 +91,11 @@ func TestAddFile(t *testing.T) {
 
 	// Test adding the same file again (should result in nochange)
 	result2 := AddFile(testFile)
-	if result2.err != nil {
-		t.Fatalf("AddFile second time failed: %v", result2.err)
+	if result2.Err != nil {
+		t.Fatalf("AddFile second time failed: %v", result2.Err)
 	}
 
-	if result2.resutl != util.GitResultNochange {
+	if result2.Result != util.GitResultNochange {
 		t.Errorf("Expected GitResultNochange, got %v", result2.resutl)
 	}
 
@@ -116,8 +116,8 @@ func TestGetFileLog(t *testing.T) {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 	result1 := AddFile(testFile)
-	if result1.err != nil {
-		t.Fatalf("AddFile failed: %v", result1.err)
+	if result1.Err != nil {
+		t.Fatalf("AddFile failed: %v", result1.Err)
 	}
 
 	// Second version
@@ -125,8 +125,8 @@ func TestGetFileLog(t *testing.T) {
 		t.Fatalf("Failed to modify test file: %v", err)
 	}
 	result2 := AddFile(testFile)
-	if result2.err != nil {
-		t.Fatalf("AddFile second time failed: %v", result2.err)
+	if result2.Err != nil {
+		t.Fatalf("AddFile second time failed: %v", result2.Err)
 	}
 
 	// Third version
@@ -134,8 +134,8 @@ func TestGetFileLog(t *testing.T) {
 		t.Fatalf("Failed to modify test file: %v", err)
 	}
 	result3 := AddFile(testFile)
-	if result3.err != nil {
-		t.Fatalf("AddFile third time failed: %v", result3.err)
+	if result3.Err != nil {
+		t.Fatalf("AddFile third time failed: %v", result3.Err)
 	}
 
 	// Get log
@@ -177,8 +177,8 @@ func TestGetFile_WithCommit(t *testing.T) {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 	result1 := AddFile(testFile)
-	if result1.err != nil {
-		t.Fatalf("AddFile failed: %v", result1.err)
+	if result1.Err != nil {
+		t.Fatalf("AddFile failed: %v", result1.Err)
 	}
 
 	// Get the first commit hash
@@ -197,8 +197,8 @@ func TestGetFile_WithCommit(t *testing.T) {
 		t.Fatalf("Failed to modify test file: %v", err)
 	}
 	result2 := AddFile(testFile)
-	if result2.err != nil {
-		t.Fatalf("AddFile second time failed: %v", result2.err)
+	if result2.Err != nil {
+		t.Fatalf("AddFile second time failed: %v", result2.Err)
 	}
 
 	// Get the first version using commit hash
@@ -235,8 +235,8 @@ func TestGetFile_WithoutCommit(t *testing.T) {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 	result1 := AddFile(testFile)
-	if result1.err != nil {
-		t.Fatalf("AddFile failed: %v", result1.err)
+	if result1.Err != nil {
+		t.Fatalf("AddFile failed: %v", result1.Err)
 	}
 
 	// Second version (this will be HEAD)
@@ -245,8 +245,8 @@ func TestGetFile_WithoutCommit(t *testing.T) {
 		t.Fatalf("Failed to modify test file: %v", err)
 	}
 	result2 := AddFile(testFile)
-	if result2.err != nil {
-		t.Fatalf("AddFile second time failed: %v", result2.err)
+	if result2.Err != nil {
+		t.Fatalf("AddFile second time failed: %v", result2.Err)
 	}
 
 	// Get the file from HEAD (empty commit string)
@@ -283,8 +283,8 @@ func TestGetFile_ToNestedDirectory(t *testing.T) {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 	result := AddFile(testFile)
-	if result.err != nil {
-		t.Fatalf("AddFile failed: %v", result.err)
+	if result.Err != nil {
+		t.Fatalf("AddFile failed: %v", result.Err)
 	}
 
 	// Get file to a nested directory that doesn't exist
