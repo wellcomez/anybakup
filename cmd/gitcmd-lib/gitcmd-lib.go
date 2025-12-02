@@ -15,7 +15,7 @@ typedef struct {
 	GitChange* changes;
 	int count;
 } GitChangeArray;
- 
+
 typedef struct {
 	int64_t id;
 	char* src_file;
@@ -34,9 +34,11 @@ typedef struct {
 import "C"
 
 import (
-	"anybakup/cmd"
 	"fmt"
 	"unsafe"
+
+	"anybakup/cmd"
+	// "fmt"
 )
 
 // C-exportable wrapper for GetFileLog
@@ -230,6 +232,7 @@ func RmFileC(filePath *C.char) C.int {
 
 	goFilePath := C.GoString(filePath)
 	err := cmd.RmFile(goFilePath)
+	fmt.Println(err)
 	if err != nil {
 		return -2
 		// return C.CString(fmt.Sprintf("error: %v", err))
@@ -260,9 +263,10 @@ func AddFileC(filePath *C.char) C.int {
 // C-exportable wrapper for GetFile
 //
 //export GetFileC
-func GetFileC(filePath *C.char, commit *C.char, target *C.char) *C.char {
+func GetFileC(filePath *C.char, commit *C.char, target *C.char) C.int {
 	if filePath == nil || target == nil {
-		return C.CString("error: file path or target is nil")
+		return -1
+		// C.CString("error: file path or target is nil")
 	}
 
 	goFilePath := C.GoString(filePath)
@@ -271,10 +275,12 @@ func GetFileC(filePath *C.char, commit *C.char, target *C.char) *C.char {
 
 	err := cmd.GetFile(goFilePath, goCommit, goTarget)
 	if err != nil {
-		return C.CString(fmt.Sprintf("error: %v", err))
+		return -2
+		// return C.CString(fmt.Sprintf("error: %v", err))
 	}
 
-	return C.CString("success: file retrieved")
+	return 0
+	// C.CString("success: file retrieved")
 }
 
 // Helper function to free C strings

@@ -1,12 +1,13 @@
 package cmd
 
 import (
-	"anybakup/util"
 	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
+
+	"anybakup/util"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -36,7 +37,7 @@ func NewSqldb() (*sqldb, error) {
 
 	// Create directory if it doesn't exist
 	dir := filepath.Dir(dbPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create directory for database: %v", err)
 	}
 
@@ -139,6 +140,8 @@ func BackupOptRm(file string) error {
 	_, err = db.db.Exec(query, file, file)
 	if err != nil {
 		return fmt.Errorf("failed to delete file operation: %v", err)
+	} else {
+		fmt.Printf("Deleted file operation for %s\n", file)
 	}
 
 	return nil

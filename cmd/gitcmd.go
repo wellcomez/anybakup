@@ -1,10 +1,11 @@
 package cmd
 
 import (
-	"anybakup/util"
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"anybakup/util"
 )
 
 // GetFileLog returns the git log for a specific file
@@ -85,14 +86,15 @@ func RmFile(arg string) error {
 		switch yes {
 		case util.GitResultRm:
 		case util.GitResultNochange:
+			if err := BackupOptRm(file); err != nil {
+				fmt.Println(err)
+			}
 			return nil
 		default:
 			return fmt.Errorf("unknown result %v", yes)
 		}
 	}
 	return nil
-	// BackupOptAdd(file, ret.Dest, isfile)
-	// return
 }
 
 func IsFile(file string) (bool, error) {
@@ -101,7 +103,6 @@ func IsFile(file string) (bool, error) {
 	} else {
 		return st.Mode().IsRegular(), nil
 	}
-
 }
 
 // GetFile retrieves a file from a specific commit
