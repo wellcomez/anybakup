@@ -232,7 +232,7 @@ func RmFileC(filePath *C.char) C.int {
 
 	goFilePath := C.GoString(filePath)
 	err := cmd.RmFile(goFilePath)
-	fmt.Println(err)
+	fmt.Println("RmFileC", err)
 	if err != nil {
 		return -2
 		// return C.CString(fmt.Sprintf("error: %v", err))

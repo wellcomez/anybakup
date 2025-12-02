@@ -83,16 +83,18 @@ func RmFile(arg string) error {
 	if yes, err := repo.GitRmFile(repo.Src2Repo(file)); err != nil {
 		return err
 	} else {
+		fmt.Printf("rm rc=%v\n", yes)
 		switch yes {
 		case util.GitResultRm:
+			break
 		case util.GitResultNochange:
-			if err := BackupOptRm(file); err != nil {
-				fmt.Println(err)
-			}
-			return nil
+			break
 		default:
 			return fmt.Errorf("unknown result %v", yes)
 		}
+	}
+	if err := BackupOptRm(file); err != nil {
+		fmt.Println(err)
 	}
 	return nil
 }

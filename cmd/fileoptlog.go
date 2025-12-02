@@ -130,6 +130,7 @@ func BackupOptAdd(srcFile, destFile string, isFile bool) error {
 func BackupOptRm(file string) error {
 	db, err := NewSqldb()
 	if err != nil {
+		fmt.Printf("SQL Deleted file operation for 1 %s\n", file)
 		return err
 	}
 	defer db.Close()
@@ -138,10 +139,12 @@ func BackupOptRm(file string) error {
 	query := `DELETE FROM file_operations WHERE srcfile = ? OR destfile = ?`
 
 	_, err = db.db.Exec(query, file, file)
+	// r.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("failed to delete file operation: %v", err)
+		fmt.Printf("SQL Deleted file operation for 2 %s\n", file)
+		return fmt.Errorf("sql failed to delete file operation:  %v", err)
 	} else {
-		fmt.Printf("Deleted file operation for %s\n", file)
+		fmt.Printf("SQL Deleted file operation for %s\n", file)
 	}
 
 	return nil
