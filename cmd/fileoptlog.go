@@ -16,6 +16,7 @@ type FileOperation struct {
 	SrcFile    string
 	DestFile   string
 	IsFile     bool
+	RevCount   int
 	AddTime    time.Time
 	UpdateTime time.Time
 }
@@ -52,6 +53,7 @@ func NewSqldb() (*sqldb, error) {
 		srcfile TEXT NOT NULL,
 		destfile TEXT NOT NULL,
 		isfile BOOLEAN NOT NULL,
+		revcount INTEGER DEFAULT 0,
 		add_time DATETIME DEFAULT CURRENT_TIMESTAMP,
 		update_time DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
@@ -75,6 +77,12 @@ func (s *sqldb) Close() error {
 }
 
 func BackupOptAdd(srcFile, destFile string, isFile bool) error {
+	revcount := 0
+	if count, err := GetFileLog(srcFile); err != nil {
+		return err
+	} else {
+		revcount = len(count)
+	}
 	db, err := NewSqldb()
 	if err != nil {
 		return err
@@ -83,7 +91,7 @@ func BackupOptAdd(srcFile, destFile string, isFile bool) error {
 
 	// Check if the entry already exists
 	checkQuery := `
-	SELECT COUNT(*) FROM file_operations 
+	SELECT COUNT(*) FROM file_operations
 	WHERE srcfile = ?`
 
 	var count int
@@ -93,23 +101,23 @@ func BackupOptAdd(srcFile, destFile string, isFile bool) error {
 	}
 
 	if count > 0 {
-		// Update the existing entry with a new update_time
+		// Update the existing entry with a new update_time and revcount
 		updateQuery := `
-		UPDATE file_operations 
-		SET destfile = ?, isfile = ?, update_time = CURRENT_TIMESTAMP 
+		UPDATE file_operations
+		SET destfile = ?, isfile = ?, revcount = ?, update_time = CURRENT_TIMESTAMP
 		WHERE srcfile = ?`
 
-		_, err = db.db.Exec(updateQuery, destFile, isFile, srcFile)
+		_, err = db.db.Exec(updateQuery, destFile, isFile, revcount, srcFile)
 		if err != nil {
 			return fmt.Errorf("failed to update file operation: %v", err)
 		}
 	} else {
 		// Insert a new entry
 		insertQuery := `
-		INSERT INTO file_operations (srcfile, destfile, isfile, add_time, update_time)
-		VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+		INSERT INTO file_operations (srcfile, destfile, isfile, revcount, add_time, update_time)
+		VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
 
-		_, err = db.db.Exec(insertQuery, srcFile, destFile, isFile)
+		_, err = db.db.Exec(insertQuery, srcFile, destFile, isFile, revcount)
 		if err != nil {
 			return fmt.Errorf("failed to insert file operation: %v", err)
 		}
@@ -143,7 +151,7 @@ func GetAllOpt() ([]FileOperation, error) {
 	}
 	defer db.Close()
 
-	query := `SELECT id, srcfile, destfile, isfile, add_time, update_time FROM file_operations ORDER BY add_time DESC`
+	query := `SELECT id, srcfile, destfile, isfile, revcount, add_time, update_time FROM file_operations ORDER BY add_time DESC`
 
 	rows, err := db.db.Query(query)
 	if err != nil {
@@ -154,7 +162,7 @@ func GetAllOpt() ([]FileOperation, error) {
 	var operations []FileOperation
 	for rows.Next() {
 		var op FileOperation
-		err := rows.Scan(&op.ID, &op.SrcFile, &op.DestFile, &op.IsFile, &op.AddTime, &op.UpdateTime)
+		err := rows.Scan(&op.ID, &op.SrcFile, &op.DestFile, &op.IsFile, &op.RevCount, &op.AddTime, &op.UpdateTime)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan file operation: %v", err)
 		}

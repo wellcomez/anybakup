@@ -21,6 +21,7 @@ typedef struct {
 	char* src_file;
 	char* dest_file;
 	int is_file;  // 1 for true, 0 for false
+	int revcount;
 	char* add_time;
 	char* update_time;
 } FileOperationC;
@@ -187,6 +188,7 @@ func GetAllOptC() *C.FileOperationArray {
 		} else {
 			cOp.is_file = 0
 		}
+		cOp.revcount = C.int(op.RevCount)
 		cOp.add_time = C.CString(op.AddTime.Format("2006-01-02 15:04:05"))
 		cOp.update_time = C.CString(op.UpdateTime.Format("2006-01-02 15:04:05"))
 
