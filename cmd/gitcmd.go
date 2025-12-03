@@ -57,6 +57,7 @@ func AddFile(arg string) (ret Result_git_add) {
 		ret.Err = err
 	} else {
 		ret.Result = yes.Action
+		fmt.Printf(">>> result %v\n", ret.Result)
 		switch yes.Action {
 		case util.GitResultTypeAdd:
 			ret.Dest = dest.Sting()
@@ -67,6 +68,7 @@ func AddFile(arg string) (ret Result_git_add) {
 			return
 		}
 		isfile, err := IsFile(file)
+		fmt.Printf("isfile %v %v\n", isfile, err)
 		if err != nil {
 			ret.Err = err
 			return
@@ -76,9 +78,10 @@ func AddFile(arg string) (ret Result_git_add) {
 		}
 		if !isfile {
 			for _, f := range yes.Files {
-				fmt.Printf("added %v\n", f)
 				if err := BakupOptAdd(fmt.Sprintf("/%v", f), f, true, true); err != nil {
 					fmt.Printf("failed to add sql backup record %v", err)
+				} else {
+					fmt.Printf(">>> added to sql %v\n", f)
 				}
 			}
 		}
