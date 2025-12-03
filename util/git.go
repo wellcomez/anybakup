@@ -29,16 +29,20 @@ func (s SrcPath) Repo(d RepoRoot) RepoPath {
 	}
 	return RepoPath(rel)
 }
+
 func (s SrcPath) Sting() string {
 	return string(s)
 }
+
 func (s RepoPath) Sting() string {
 	return string(s)
 }
+
 func (s RepoPath) ToAbs(repo GitRepo) string {
 	r := RepoRoot(repo.root)
 	return r.With(s.Sting())
 }
+
 func (r GitRepo) rel(s string) (string, error) {
 	if !filepath.IsAbs(s) {
 		// f := filepath.Join(r.root, s)
@@ -55,7 +59,7 @@ func (r GitRepo) rel(s string) (string, error) {
 	return rel, nil
 }
 
-func (conf GitRepo) CopyToRepo(src SrcPath) (RepoPath, error) {
+func (conf *GitRepo) CopyToRepo(src SrcPath) (RepoPath, error) {
 	// Verify source exists and get its info
 	srcInfo, err := os.Stat(src.Sting())
 	if err != nil {
@@ -95,6 +99,7 @@ func (r *GitRepo) load() error {
 	r.root = conf.RepoDir.String()
 	return nil
 }
+
 func (r GitRepo) AbsRepo2Repo(s string) RepoPath {
 	rel, err := filepath.Rel(r.root, s)
 	if err != nil {
@@ -102,6 +107,7 @@ func (r GitRepo) AbsRepo2Repo(s string) RepoPath {
 	}
 	return RepoPath(rel)
 }
+
 func (r GitRepo) Src2Repo(s string) RepoPath {
 	rel, err := filepath.Rel("/", s)
 	if err != nil {
@@ -175,40 +181,42 @@ func (r GitRepo) GitRmFile(real_path RepoPath) (GitResult, error) {
 	os.Remove(abspath)
 
 	gitfile := real_path.Sting()
-	state, err := GetState(gitfile, &r)
+	stateBeofe, err := GetStateStage(gitfile, &r)
 	if err != nil {
-		fmt.Println(err)
+		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
 	}
-	fmt.Printf("%-10s rm %-50s %v\n", "before", gitfile, state)
+	workstateBefore, err := GetStateWorkTree(gitfile, &r)
+	if err != nil {
+		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
+	}
+	fmt.Printf("%-10s rm %-50s work=%v staget=%v \n", "before", gitfile, workstateBefore, stateBeofe)
+	if workstateBefore != GitDeleted {
+		return GitResultNochange, nil
+	}
 	_, err = w.Remove(gitfile)
 	if err != nil {
-		fmt.Println(err)
+		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
 	}
-	state, err = GetState(gitfile, &r)
-	if err != nil {
-		fmt.Println(err)
-	}
-	if err != nil {
-		return add, fmt.Errorf("git rm err:=%v file:=%v:%v", err, gitfile, real_path)
-	}
-	fmt.Printf("%-10s rm %-50s %v\n", "after", gitfile, state)
-	yes := state == GitAdded || state == GitUnmodified
-	if !yes {
+	stateAfter, _ := GetStateStage(gitfile, &r)
+	workstateAfter, _ := GetStateWorkTree(gitfile, &r)
+	fmt.Printf("%-10s rm %-50s work=%v staget=%v \n", "after", gitfile, workstateAfter, stateAfter)
+	if yes := stateAfter == GitDeleted; !yes {
 		add = GitResultNochange
 		return add, nil
+	} else {
+		msg := fmt.Sprintf("RM %v", real_path)
+		_, err = w.Commit(msg, &git.CommitOptions{
+			Author: &object.Signature{
+				Name: "anybakup",
+				When: time.Now(),
+			},
+		})
+		if err != nil {
+			return add, fmt.Errorf("git commit err=%v file=%v:%v", err, gitfile, real_path)
+		}
+		add = GitResultRm
+		return add, nil
 	}
-	msg := fmt.Sprintf("RM %v", real_path)
-	_, err = w.Commit(msg, &git.CommitOptions{
-		Author: &object.Signature{
-			Name: "anybakup",
-			When: time.Now(),
-		},
-	})
-	if err != nil {
-		return add, fmt.Errorf("git commit err=%v file=%v:%v", err, gitfile, real_path)
-	}
-	add = GitResultRm
-	return add, nil
 }
 
 type GitResult string
@@ -232,31 +240,55 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 	if err != nil {
 		return add, fmt.Errorf("git add %v %v", err, file)
 	}
-	state, _ := GetState(gitfile, nil)
-	fmt.Printf("%-10s add %-50s %v\n", "before", file, state)
+	fmt.Println("-----------------Before---------------")
+	stageState, _ := GetStateStage(gitfile, nil)
+	workState, _ := GetStateWorkTree(gitfile, nil)
+	fmt.Printf("%-10s add %-50s s:%v w:%v\n", "Before", file, stageState, workState)
+	if needAdd := stageState != GitUnmodified || workState != GitUnmodified; !needAdd {
+		return GitResultNochange, nil
+	}
 	_, err = w.Add(gitfile)
-	state, _ = GetState(gitfile, nil)
 	if err != nil {
 		return add, fmt.Errorf("git add %v %v", err, file)
 	}
-	fmt.Printf("%-10s add %-50s %v\n", "after", file, state)
-	yes := state == GitAdded || state == GitUnmodified
-	if !yes {
-		return GitResultNochange, nil
+	fmt.Println("-----------------after----------------")
+	if AfterstageState, err := GetStateStage(gitfile, nil); err == nil {
+		AfterworkState, _ := GetStateWorkTree(gitfile, nil)
+		if err != nil {
+			return add, fmt.Errorf("git add %v %v", err, file)
+		}
+		fmt.Printf("%-10s add %-50s s:%v w:%v\n", "after", file, AfterstageState, AfterworkState)
+		action := ""
+		switch AfterstageState {
+		case GitModified:
+			action = "UPDATE"
+		case GitAdded:
+			action = "ADD"
+		case GitUntracked:
+			if stageState == AfterstageState {
+				return GitResultNochange, nil
+			}
+		}
+		if action == "" {
+			return GitResultError, fmt.Errorf("git add failed %s", stageState)
+		}
+		msg := fmt.Sprintf("%v %v", action, gitpath)
+		_, err = w.Commit(msg, &git.CommitOptions{
+			Author: &object.Signature{
+				Name: "anybakup",
+				When: time.Now(),
+			},
+		})
+		if err != nil {
+			return add, fmt.Errorf("git commit %v %v", err, file)
+		}
+		add = GitResultAdd
+		return add, nil
+	} else {
+		return add, fmt.Errorf("git add %v %v", err, file)
 	}
-	msg := fmt.Sprintf("ADD %v", gitpath)
-	_, err = w.Commit(msg, &git.CommitOptions{
-		Author: &object.Signature{
-			Name: "anybakup",
-			When: time.Now(),
-		},
-	})
-	if err != nil {
-		return add, fmt.Errorf("git commit %v %v", err, file)
-	}
-	add = GitResultAdd
-	return add, nil
 }
+
 func (r GitRepo) GitViewFile(gitpath RepoPath, commitHash string, outpath string) (string, error) {
 	repo, err := r.Open()
 	if err != nil {
@@ -294,12 +326,12 @@ func (r GitRepo) GitViewFile(gitpath RepoPath, commitHash string, outpath string
 
 	// Create output directory if it doesn't exist
 	outDir := filepath.Dir(outpath)
-	if err := os.MkdirAll(outDir, 0755); err != nil {
+	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return "", fmt.Errorf("git view file: failed to create output directory: %v", err)
 	}
 
 	// Write contents to output file
-	if err := os.WriteFile(outpath, []byte(contents), 0644); err != nil {
+	if err := os.WriteFile(outpath, []byte(contents), 0o644); err != nil {
 		return "", fmt.Errorf("git view file: failed to write output file: %v", err)
 	}
 

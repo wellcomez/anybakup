@@ -76,7 +76,7 @@ func TestInitgit(t *testing.T) {
 }
 
 // TestGitAddFile tests adding and committing a file
-func TestGitAddFile(t *testing.T) {
+func TestGitRmFile(t *testing.T) {
 	repoDir, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
@@ -97,7 +97,8 @@ func TestGitAddFile(t *testing.T) {
 	}
 
 	// Add the file (using relative path from repo root)
-	_, err = r.GitAddFile(r.AbsRepo2Repo(testFile))
+	newVar := r.AbsRepo2Repo(testFile)
+	_, err = r.GitAddFile(newVar)
 	if err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
@@ -126,6 +127,82 @@ func TestGitAddFile(t *testing.T) {
 	// Verify author
 	if commit.Author.Name != "anybakup" {
 		t.Errorf("Expected author 'anybakup', got %q", commit.Author.Name)
+	}
+	if ret, err := r.GitRmFile(newVar); err != nil {
+		t.Fatalf("GitRmFile failed: %v", err)
+	} else if ret != GitResultRm {
+		t.Errorf("Expected GitResultRm, got %v", ret)
+	}
+	if ret, err := r.GitRmFile(newVar); err != nil {
+		t.Fatalf("GitRmFile failed: %v", err)
+	} else if ret != GitResultNochange {
+		t.Errorf("Expected GitResultRm, got %v", ret)
+	}
+
+}
+
+// TestGitAddFile tests adding and committing a file
+func TestGitAddFile(t *testing.T) {
+	repoDir, cleanup := setupGitTestEnv(t)
+	defer cleanup()
+
+	r, err := NewGitReop()
+	if err != nil {
+		t.Fatalf("NewGitReop failed: %v", err)
+	}
+
+	// Initialize git repo
+	// if err := Initgit(); err != nil {
+	// 	t.Fatalf("Initgit failed: %v", err)
+	// }
+
+	// Create a test file in the repo
+	testFile := filepath.Join(repoDir, "test.txt")
+	if err := os.WriteFile(testFile, []byte("test content"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// Add the file (using relative path from repo root)
+	newVar := r.AbsRepo2Repo(testFile)
+	ret, err := r.GitAddFile(newVar)
+	if err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
+	if ret != GitResultAdd {
+		t.Errorf("Expected GitResultAdd, got %v", ret)
+	}
+
+	repo, err := r.Open()
+	if err != nil {
+		t.Fatalf("Failed to open repo: %v", err)
+	}
+
+	// Get the HEAD commit
+	ref, err := repo.Head()
+	if err != nil {
+		t.Fatalf("Failed to get HEAD: %v", err)
+	}
+
+	commit, err := repo.CommitObject(ref.Hash())
+	if err != nil {
+		t.Fatalf("Failed to get commit: %v", err)
+	}
+
+	// Verify commit message
+	if commit.Message != fmt.Sprintf("ADD %s", "test.txt") {
+		t.Errorf("Expected commit message 'ADD test.txt', got %q", commit.Message)
+	}
+
+	// Verify author
+	if commit.Author.Name != "anybakup" {
+		t.Errorf("Expected author 'anybakup', got %q", commit.Author.Name)
+	}
+	ret, err = r.GitAddFile(newVar)
+	if err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
+	if ret != GitResultNochange {
+		t.Errorf("Expected GitResultAdd, got %v", ret)
 	}
 }
 
@@ -478,7 +555,7 @@ func TestGitStatusFile(t *testing.T) {
 	}
 
 	// Add the file
-	if _, err := GetState(testFile, nil); err != nil {
+	if _, err := GetStateStage(testFile, nil); err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
 	r, _ := NewGitReop()
@@ -496,23 +573,58 @@ func TestGitStatusFile(t *testing.T) {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
-	if s, err := GetState(testFile, nil); err != nil {
+	if s, err := GetStateWorkTree(testFile, nil); err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	} else if s != GitModified {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
-
-	if err := os.WriteFile(testFile, []byte("test content"), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
+	if _, err := r.GitAddFile(gitapth); err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
 	}
-
-	if s, err := GetState(testFile, nil); err != nil {
+	if s, err := GetStateWorkTree(testFile, nil); err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	} else if s != GitUntracked {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
+	if s, err := GetStateStage(testFile, nil); err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	} else if s != GitUntracked {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
+	if _, err := r.GitAddFile(gitapth); err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
+	if s, err := GetStateWorkTree(testFile, nil); err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	} else if s != GitUntracked {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
+	if s, err := GetStateStage(testFile, nil); err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	} else if s != GitUntracked {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
+	// if err := os.WriteFile(testFile, []byte("test content"), 0644); err != nil {
+	// 	t.Fatalf("Failed to create test file: %v", err)
+	// }
+
+	// if s, err := GetStateStage(testFile, nil); err != nil {
+	// 	t.Fatalf("GitAddFile failed: %v", err)
+	// } else if s != GitUntracked {
+	// 	t.Fatalf("GitAddFile failed: %v", err)
+	// }
 
 	if _, err := r.GitRmFile(gitapth); err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
+	if s, err := GetStateWorkTree(testFile, nil); err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	} else if s != GitUntracked {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
+	if s, err := GetStateStage(testFile, nil); err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	} else if s != GitUntracked {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
 }

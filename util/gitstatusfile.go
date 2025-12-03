@@ -12,17 +12,6 @@ import (
 // 	reporoot *GitRepo
 // }
 
-//	func NewGitCheckStatus() (*GitStatusFile, error) {
-//		s := GitStatusFile{}
-//		if s.reporoot == nil {
-//			var err error
-//			s.reporoot, err = NewGitReop()
-//			if err != nil {
-//				return nil, fmt.Errorf("status file %v", err)
-//			}
-//		}
-//		return &s, nil
-//	}
 func CheckStatus(git *git.Repository) (git.Status, error) {
 	w, err := git.Worktree()
 	if err != nil {
@@ -31,16 +20,18 @@ func CheckStatus(git *git.Repository) (git.Status, error) {
 
 	// w.StatusWithOptions(git.StatusOptions{Strategy: git.Preload})
 	status, err := w.Status()
-	fmt.Printf("STATUS FILE STATUS \n%v\n", status.String())
+	fmt.Printf("status to string: %v", status.String())
+	fmt.Println("")
 	if err != nil {
 		return nil, fmt.Errorf("workstate err=%v", err)
 	}
 	for a, k := range status {
-		fmt.Printf("%-50s w:=[%c]|[%s]\n", a, k.Worktree, k.Extra)
+		fmt.Printf("%-50s Staging=%c worktree=%c Extra=%s\n", a, k.Staging, k.Worktree, k.Extra)
 	}
 	return status, nil
 }
-func GetState(file string, repo *GitRepo) (StatusCode, error) {
+
+func GetStateStage(file string, repo *GitRepo) (StatusCode, error) {
 	if repo == nil {
 		r, _ := NewGitReop()
 		repo = r
@@ -54,31 +45,58 @@ func GetState(file string, repo *GitRepo) (StatusCode, error) {
 		return GitStatusErro, err
 	}
 	st := status.File(gitfile)
-	if _, ok := status[gitfile]; !ok {
+	newVar := st.Staging
+	switch newVar {
+	case git.Unmodified:
 		return GitUnmodified, nil
-	}
-	if st.Worktree == git.Unmodified {
-		return GitUnmodified, nil
-	}
-	if st.Worktree == git.Untracked {
+	case git.Untracked:
 		return GitUntracked, nil
-	}
-	if st.Worktree == git.Modified {
+	case git.Modified:
 		return GitModified, nil
-	}
-	if st.Worktree == git.Added {
+	case git.Added:
 		return GitAdded, nil
-	}
-	if st.Worktree == git.Deleted {
+	case git.Deleted:
 		return GitDeleted, nil
-	}
-	if st.Worktree == git.Renamed {
+	case git.Renamed:
 		return GitRenamed, nil
-	}
-	if st.Worktree == git.Copied {
+	case git.Copied:
 		return GitCopied, nil
+	case git.UpdatedButUnmerged:
+		return GitUpdatedButUnmerged, nil
 	}
-	if st.Worktree == git.UpdatedButUnmerged {
+	return GitStatusErro, fmt.Errorf("workstate %v %v", st.Worktree, file)
+}
+func GetStateWorkTree(file string, repo *GitRepo) (StatusCode, error) {
+	if repo == nil {
+		r, _ := NewGitReop()
+		repo = r
+	}
+	status, err := CheckStatus(repo.repo)
+	if err != nil {
+		return GitStatusErro, err
+	}
+	gitfile, err := repo.rel(file)
+	if err != nil {
+		return GitStatusErro, err
+	}
+	st := status.File(gitfile)
+	newVar := st.Worktree
+	switch newVar {
+	case git.Unmodified:
+		return GitUnmodified, nil
+	case git.Untracked:
+		return GitUntracked, nil
+	case git.Modified:
+		return GitModified, nil
+	case git.Added:
+		return GitAdded, nil
+	case git.Deleted:
+		return GitDeleted, nil
+	case git.Renamed:
+		return GitRenamed, nil
+	case git.Copied:
+		return GitCopied, nil
+	case git.UpdatedButUnmerged:
 		return GitUpdatedButUnmerged, nil
 	}
 	return GitStatusErro, fmt.Errorf("workstate %v %v", st.Worktree, file)
