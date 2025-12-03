@@ -22,6 +22,7 @@ typedef struct {
 	char* dest_file;
 	int is_file;  // 1 for true, 0 for false
 	int revcount;
+	int sub;
 	char* add_time;
 	char* update_time;
 } FileOperationC;
@@ -114,22 +115,22 @@ func GetFileLogC(filePath *C.char) *C.GitChangeArray {
 // C-exportable wrapper for BackupOptAdd
 //
 //export BackupOptAddC
-func BackupOptAddC(srcFile *C.char, destFile *C.char, isFile C.int) C.int {
-	if srcFile == nil || destFile == nil {
-		return -1
-	}
+// func BackupOptAddC(srcFile *C.char, destFile *C.char, isFile C.int) C.int {
+// 	if srcFile == nil || destFile == nil {
+// 		return -1
+// 	}
 
-	goSrcFile := C.GoString(srcFile)
-	goDestFile := C.GoString(destFile)
-	goIsFile := isFile != 0
+// 	goSrcFile := C.GoString(srcFile)
+// 	goDestFile := C.GoString(destFile)
+// 	goIsFile := isFile != 0
 
-	err := cmd.BakupOptAdd(goSrcFile, goDestFile, goIsFile)
-	if err != nil {
-		return -2
-	}
+// 	err := cmd.BakupOptAdd(goSrcFile, goDestFile, goIsFile)
+// 	if err != nil {
+// 		return -2
+// 	}
 
-	return 0
-}
+// 	return 0
+// }
 
 // C-exportable wrapper for BackupOptRm
 //
@@ -149,7 +150,6 @@ func BackupOptRmC(file *C.char) C.int {
 }
 
 // C-exportable wrapper for GetAllOpt
-// This function returns file operations using the dedicated FileOperationArray structure for C interop.
 //
 //export GetAllOptC
 func GetAllOptC() *C.FileOperationArray {
@@ -191,6 +191,12 @@ func GetAllOptC() *C.FileOperationArray {
 			cOp.is_file = 0
 		}
 		cOp.revcount = C.int(op.RevCount)
+		// New field added for sub
+		if op.Sub {
+			cOp.sub = 1
+		} else {
+			cOp.sub = 0
+		}
 		cOp.add_time = C.CString(op.AddTime.Format("2006-01-02 15:04:05"))
 		cOp.update_time = C.CString(op.UpdateTime.Format("2006-01-02 15:04:05"))
 
