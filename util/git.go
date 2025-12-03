@@ -21,6 +21,7 @@ type (
 		repo *git.Repository
 	}
 )
+
 type GitStatusResult struct {
 	Staging  StatusCode
 	Worktree StatusCode
@@ -31,6 +32,17 @@ type GitStatusResult struct {
 func (s GitStatusResult) print(preifx string) {
 	fmt.Printf("%-10s add %-50s s:%v w:%v\n", preifx, s.Path, s.Staging, s.Worktree)
 }
+
+func (s GitStatusResult) NeedGitCommitFiles(state git.StatusCode) (ret []string) {
+	for k, v := range s.Status {
+		status := v.Staging
+		if status == state {
+			ret = append(ret, k)
+		}
+	}
+	return
+}
+
 func (s GitStatusResult) NeedGitCommit() string {
 	action := ""
 	for _, v := range s.Status {
@@ -49,6 +61,7 @@ func (s GitStatusResult) NeedGitCommit() string {
 	}
 	return ""
 }
+
 func (s GitStatusResult) NeedGitAdd() bool {
 	for _, v := range s.Status {
 		status := v.Worktree
@@ -58,6 +71,7 @@ func (s GitStatusResult) NeedGitAdd() bool {
 	}
 	return false
 }
+
 func (s GitStatusResult) NeedGitRm() bool {
 	for _, v := range s.Status {
 		status := v.Worktree
@@ -85,9 +99,9 @@ func (r *GitRepo) Status(gitfile RepoPath) (GitStatusResult, error) {
 			ret.Status = status
 			return ret, nil
 		}
-
 	}
 }
+
 func (s SrcPath) Repo(d RepoRoot) RepoPath {
 	rel, err := filepath.Rel("/", string(s))
 	if err != nil {
@@ -235,7 +249,7 @@ func (r GitRepo) Init() error {
 func (r GitRepo) GitRmFile(real_path RepoPath) (GitResult, error) {
 	add := GitResult{
 		Action: GitResultTypeError,
-	} 
+	}
 	repo, err := r.Open()
 	if err != nil {
 		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
@@ -320,7 +334,7 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 	state.print("before")
 	if !state.NeedGitAdd() {
 		ret.Action = GitResultTypeNochange
-		return  ret,nil
+		return ret, nil
 	}
 	_, err = w.Add(gitpath.Sting())
 	if err != nil {

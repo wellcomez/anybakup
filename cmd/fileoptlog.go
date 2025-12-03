@@ -79,10 +79,14 @@ func (s *sqldb) Close() error {
 
 func BakupOptAdd(srcFile, destFile string, isFile bool) error {
 	revcount := 0
-	if count, err := GetFileLog(srcFile); err != nil {
-		return err
-	} else {
-		revcount = len(count)
+	if isFile {
+		if count, err := GetFileLog(srcFile); err != nil {
+			return err
+		} else {
+			revcount = len(count)
+		}
+	}else{
+		revcount = 1
 	}
 	db, err := NewSqldb()
 	if err != nil {
