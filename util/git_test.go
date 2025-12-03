@@ -130,12 +130,12 @@ func TestGitRmFile(t *testing.T) {
 	}
 	if ret, err := r.GitRmFile(newVar); err != nil {
 		t.Fatalf("GitRmFile failed: %v", err)
-	} else if ret != GitResultTypeRm {
+	} else if ret.Action != GitResultTypeRm {
 		t.Errorf("Expected GitResultRm, got %v", ret)
 	}
 	if ret, err := r.GitRmFile(newVar); err != nil {
 		t.Fatalf("GitRmFile failed: %v", err)
-	} else if ret != GitResultTypeNochange {
+	} else if ret.Action != GitResultTypeNochange {
 		t.Errorf("Expected GitResultRm, got %v", ret)
 	}
 
@@ -174,7 +174,7 @@ func TestGitAddDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
-	if ret != GitResultTypeAdd {
+	if ret.Action != GitResultTypeAdd {
 		t.Errorf("Expected GitResultAdd, got %v", ret)
 	}
 
@@ -239,7 +239,7 @@ func TestGitAddFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
-	if ret != GitResultTypeAdd {
+	if ret.Action != GitResultTypeAdd {
 		t.Errorf("Expected GitResultAdd, got %v", ret)
 	}
 
@@ -272,7 +272,7 @@ func TestGitAddFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
-	if ret != GitResultTypeNochange {
+	if ret.Action != GitResultTypeNochange {
 		t.Errorf("Expected GitResultAdd, got %v", ret)
 	}
 }

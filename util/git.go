@@ -233,10 +233,12 @@ func (r GitRepo) Init() error {
 }
 
 func (r GitRepo) GitRmFile(real_path RepoPath) (GitResult, error) {
-	add := GitResultTypeError
+	add := GitResult{
+		Action: GitResultTypeError,
+	} 
 	repo, err := r.Open()
 	if err != nil {
-		return GitResultTypeError, fmt.Errorf("git rm err=%v file=%v", err, real_path)
+		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
 	}
 	w, err := repo.Worktree()
 	if err != nil {
@@ -253,7 +255,8 @@ func (r GitRepo) GitRmFile(real_path RepoPath) (GitResult, error) {
 	}
 	state.print("before")
 	if !state.NeedGitRm() {
-		return GitResultTypeNochange, nil
+		add.Action = GitResultTypeNochange
+		return add, nil
 	}
 	_, err = w.Remove(string(real_path))
 	if err != nil {
@@ -265,7 +268,7 @@ func (r GitRepo) GitRmFile(real_path RepoPath) (GitResult, error) {
 		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
 	}
 	if action := afterState.NeedGitCommit(); action == "" {
-		add = GitResultTypeNochange
+		add.Action = GitResultTypeNochange
 		return add, nil
 	} else {
 		msg := fmt.Sprintf("RM %v", real_path)
@@ -278,24 +281,29 @@ func (r GitRepo) GitRmFile(real_path RepoPath) (GitResult, error) {
 		if err != nil {
 			return add, fmt.Errorf("git commit err=%v file=%v:%v", err, real_path, real_path)
 		}
-		add = GitResultTypeRm
+		add.Action = GitResultTypeRm
 		return add, nil
 	}
 }
 
-type GitResult string
+type GitResult struct {
+	Action GitAction
+}
+type GitAction string
 
 const (
-	GitResultTypeAdd      GitResult = "add"
-	GitResultTypeRm       GitResult = "rm"
-	GitResultTypeNochange GitResult = "nochange"
-	GitResultTypeError    GitResult = "error"
+	GitResultTypeAdd      GitAction = "add"
+	GitResultTypeRm       GitAction = "rm"
+	GitResultTypeNochange GitAction = "nochange"
+	GitResultTypeError    GitAction = "error"
 )
 
 func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 	abspath := gitpath.ToAbs(r)
 	// gitfile := gitpath.Sting()
-	ret := GitResultTypeError
+	ret := GitResult{
+		Action: GitResultTypeError,
+	}
 	repo, err := r.Open()
 	if err != nil {
 		return ret, fmt.Errorf("git add %v", err)
@@ -311,7 +319,8 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 	}
 	state.print("before")
 	if !state.NeedGitAdd() {
-		return GitResultTypeNochange, nil
+		ret.Action = GitResultTypeNochange
+		return  ret,nil
 	}
 	_, err = w.Add(gitpath.Sting())
 	if err != nil {
@@ -326,7 +335,8 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 	state.print("after")
 	action := state.NeedGitCommit()
 	if action == "" {
-		return GitResultTypeNochange, nil
+		ret.Action = GitResultTypeNochange
+		return ret, nil
 	}
 	msg := fmt.Sprintf("%v %v", action, gitpath)
 	_, err = w.Commit(msg, &git.CommitOptions{
@@ -338,7 +348,7 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 	if err != nil {
 		return ret, fmt.Errorf("git commit %v %v", err, abspath)
 	}
-	ret = GitResultTypeAdd
+	ret.Action = GitResultTypeAdd
 	return ret, nil
 }
 

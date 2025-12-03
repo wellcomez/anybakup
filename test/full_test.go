@@ -74,7 +74,7 @@ func TestGitAddFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
-	if ret != util.GitResultTypeAdd {
+	if ret.Action != util.GitResultTypeAdd {
 		t.Errorf("Expected GitResultAdd, got %v", ret)
 	}
 	if err := cmd.BakupOptAdd(testFile, repodir.Sting(), false); err != nil {
@@ -118,7 +118,7 @@ func TestGitAddDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
-	if ret != util.GitResultTypeAdd {
+	if ret.Action != util.GitResultTypeAdd {
 		t.Errorf("Expected GitResultAdd, got %v", ret)
 	}
 	if err := cmd.BakupOptAdd(dir1, repodir.Sting(), false); err != nil {

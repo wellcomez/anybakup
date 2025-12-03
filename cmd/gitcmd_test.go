@@ -96,7 +96,7 @@ func TestAddFile(t *testing.T) {
 	}
 
 	if result2.Result != util.GitResultTypeNochange {
-		t.Errorf("Expected GitResultNochange, got %v", result2.resutl)
+		t.Errorf("Expected GitResultNochange, got %v", result2.Result)
 	}
 
 	_ = repo

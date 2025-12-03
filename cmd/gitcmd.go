@@ -28,7 +28,7 @@ func GetFileLog(filePath string) ([]util.GitChanges, error) {
 type Result_git_add struct {
 	Dest   string
 	Err    error
-	Result util.GitResult
+	Result util.GitAction
 }
 
 // AddFile adds a file to the git repository
@@ -56,8 +56,8 @@ func AddFile(arg string) (ret Result_git_add) {
 	if yes, err := repo.GitAddFile(dest); err != nil {
 		ret.Err = err
 	} else {
-		ret.Result = yes
-		switch yes {
+		ret.Result = yes.Action
+		switch yes.Action {
 		case util.GitResultTypeAdd:
 			ret.Dest = dest.Sting()
 		case util.GitResultTypeNochange:
@@ -86,7 +86,7 @@ func RmFile(arg string) error {
 	if yes, err := repo.GitRmFile(repo.Src2Repo(file)); err != nil {
 		return err
 	} else {
-		switch yes {
+		switch yes.Action {
 		case util.GitResultTypeRm:
 			break
 		case util.GitResultTypeNochange:
