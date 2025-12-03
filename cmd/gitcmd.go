@@ -41,7 +41,7 @@ func AddFile(arg string) (ret Result_git_add) {
 	ret = Result_git_add{
 		Dest:   "",
 		Err:    nil,
-		Result: util.GitResultError,
+		Result: util.GitResultTypeError,
 	}
 	repo, err := util.NewGitReop()
 	if err != nil {
@@ -58,9 +58,9 @@ func AddFile(arg string) (ret Result_git_add) {
 	} else {
 		ret.Result = yes
 		switch yes {
-		case util.GitResultAdd:
+		case util.GitResultTypeAdd:
 			ret.Dest = dest.Sting()
-		case util.GitResultNochange:
+		case util.GitResultTypeNochange:
 			ret.Dest = dest.Sting()
 		default:
 			ret.Err = fmt.Errorf("add  unexpected result %v", yes)
@@ -87,9 +87,9 @@ func RmFile(arg string) error {
 		return err
 	} else {
 		switch yes {
-		case util.GitResultRm:
+		case util.GitResultTypeRm:
 			break
-		case util.GitResultNochange:
+		case util.GitResultTypeNochange:
 			break
 		default:
 			return fmt.Errorf("rm unexpected  result %v", yes)

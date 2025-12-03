@@ -70,7 +70,7 @@ func TestAddFile(t *testing.T) {
 		t.Fatalf("AddFile failed: %v", result.Err)
 	}
 
-	if result.Result != util.GitResultAdd {
+	if result.Result != util.GitResultTypeAdd {
 		t.Errorf("Expected GitResultAdd, got %v", result.Result)
 	}
 
@@ -95,7 +95,7 @@ func TestAddFile(t *testing.T) {
 		t.Fatalf("AddFile second time failed: %v", result2.Err)
 	}
 
-	if result2.Result != util.GitResultNochange {
+	if result2.Result != util.GitResultTypeNochange {
 		t.Errorf("Expected GitResultNochange, got %v", result2.resutl)
 	}
 

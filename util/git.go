@@ -24,10 +24,52 @@ type (
 type GitStatusResult struct {
 	Staging  StatusCode
 	Worktree StatusCode
+	Status   git.Status
+	Path     RepoPath
+}
+
+func (s GitStatusResult) print(preifx string) {
+	fmt.Printf("%-10s add %-50s s:%v w:%v\n", preifx, s.Path, s.Staging, s.Worktree)
+}
+func (s GitStatusResult) NeedGitCommit() string {
+	action := ""
+	for _, v := range s.Status {
+		status := v.Staging
+		switch status {
+		case git.Added:
+			action = "ADD"
+		case git.Deleted:
+			action = "RM"
+		case git.Modified:
+			action = "UPDATE"
+		}
+		if action != "" {
+			return action
+		}
+	}
+	return ""
+}
+func (s GitStatusResult) NeedGitAdd() bool {
+	for _, v := range s.Status {
+		status := v.Worktree
+		if status == git.Modified || status == git.Untracked {
+			return true
+		}
+	}
+	return false
+}
+func (s GitStatusResult) NeedGitRm() bool {
+	for _, v := range s.Status {
+		status := v.Worktree
+		if status == git.Deleted {
+			return true
+		}
+	}
+	return false
 }
 
 func (r *GitRepo) Status(gitfile RepoPath) (GitStatusResult, error) {
-	ret := GitStatusResult{Staging: GitStatusErro, Worktree: GitStatusErro}
+	ret := GitStatusResult{Staging: GitStatusErro, Worktree: GitStatusErro, Path: gitfile}
 	if git, err := r.Open(); err != nil {
 		return ret, fmt.Errorf("status file Open %v", err)
 	} else {
@@ -38,10 +80,10 @@ func (r *GitRepo) Status(gitfile RepoPath) (GitStatusResult, error) {
 		} else {
 			fmt.Printf("status to string: %v", status.String())
 			st := status.File(gitfile.Sting())
-			return GitStatusResult{
-				Staging:  GetStatuscode(st.Staging),
-				Worktree: GetStatuscode(st.Worktree),
-			}, nil
+			ret.Staging = GetStatuscode(st.Staging)
+			ret.Worktree = GetStatuscode(st.Worktree)
+			ret.Status = status
+			return ret, nil
 		}
 
 	}
@@ -191,10 +233,10 @@ func (r GitRepo) Init() error {
 }
 
 func (r GitRepo) GitRmFile(real_path RepoPath) (GitResult, error) {
-	add := GitResultError
+	add := GitResultTypeError
 	repo, err := r.Open()
 	if err != nil {
-		return GitResultError, fmt.Errorf("git rm err=%v file=%v", err, real_path)
+		return GitResultTypeError, fmt.Errorf("git rm err=%v file=%v", err, real_path)
 	}
 	w, err := repo.Worktree()
 	if err != nil {
@@ -209,11 +251,9 @@ func (r GitRepo) GitRmFile(real_path RepoPath) (GitResult, error) {
 	if err != nil {
 		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
 	}
-	stateBeofe := state.Staging
-	workstateBefore := state.Worktree
-	fmt.Printf("%-10s rm %-50s work=%v staget=%v \n", "before", real_path, workstateBefore, stateBeofe)
-	if workstateBefore != GitDeleted {
-		return GitResultNochange, nil
+	state.print("before")
+	if !state.NeedGitRm() {
+		return GitResultTypeNochange, nil
 	}
 	_, err = w.Remove(string(real_path))
 	if err != nil {
@@ -224,11 +264,8 @@ func (r GitRepo) GitRmFile(real_path RepoPath) (GitResult, error) {
 	if err != nil {
 		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
 	}
-	workstateAfter := afterState.Worktree
-	stateAfter := afterState.Staging
-	fmt.Printf("%-10s rm %-50s work=%v staget=%v \n", "after", real_path, workstateAfter, stateAfter)
-	if yes := stateAfter == GitDeleted; !yes {
-		add = GitResultNochange
+	if action := afterState.NeedGitCommit(); action == "" {
+		add = GitResultTypeNochange
 		return add, nil
 	} else {
 		msg := fmt.Sprintf("RM %v", real_path)
@@ -241,7 +278,7 @@ func (r GitRepo) GitRmFile(real_path RepoPath) (GitResult, error) {
 		if err != nil {
 			return add, fmt.Errorf("git commit err=%v file=%v:%v", err, real_path, real_path)
 		}
-		add = GitResultRm
+		add = GitResultTypeRm
 		return add, nil
 	}
 }
@@ -249,16 +286,16 @@ func (r GitRepo) GitRmFile(real_path RepoPath) (GitResult, error) {
 type GitResult string
 
 const (
-	GitResultAdd      GitResult = "add"
-	GitResultRm       GitResult = "rm"
-	GitResultNochange GitResult = "nochange"
-	GitResultError    GitResult = "error"
+	GitResultTypeAdd      GitResult = "add"
+	GitResultTypeRm       GitResult = "rm"
+	GitResultTypeNochange GitResult = "nochange"
+	GitResultTypeError    GitResult = "error"
 )
 
 func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 	abspath := gitpath.ToAbs(r)
 	// gitfile := gitpath.Sting()
-	ret := GitResultError
+	ret := GitResultTypeError
 	repo, err := r.Open()
 	if err != nil {
 		return ret, fmt.Errorf("git add %v", err)
@@ -272,11 +309,9 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 	if err != nil {
 		return ret, fmt.Errorf("git add %v", err)
 	}
-	stageState := state.Staging
-	workState := state.Worktree
-	fmt.Printf("%-10s add %-50s s:%v w:%v\n", "Before", abspath, stageState, workState)
-	if needAdd := stageState != GitUnmodified || workState != GitUnmodified; !needAdd {
-		return GitResultNochange, nil
+	state.print("before")
+	if !state.NeedGitAdd() {
+		return GitResultTypeNochange, nil
 	}
 	_, err = w.Add(gitpath.Sting())
 	if err != nil {
@@ -288,28 +323,10 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 	if err != nil {
 		return ret, fmt.Errorf("git add %v", err)
 	}
-	AfterstageState := state.Staging
-	AfterworkState := state.Worktree
-	if err != nil {
-		return ret, fmt.Errorf("git add %v %v", err, abspath)
-	}
-	if ok := AfterworkState == GitUnmodified || AfterstageState == GitUntracked; !ok {
-		return ret, fmt.Errorf("git add %v %v", err, abspath)
-	}
-	fmt.Printf("%-10s add %-50s s:%v w:%v\n", "after", abspath, AfterstageState, AfterworkState)
-	action := ""
-	switch AfterstageState {
-	case GitModified:
-		action = "UPDATE"
-	case GitAdded:
-		action = "ADD"
-	case GitUntracked:
-		if stageState == AfterstageState {
-			return GitResultNochange, nil
-		}
-	}
+	state.print("after")
+	action := state.NeedGitCommit()
 	if action == "" {
-		return GitResultError, fmt.Errorf("git add-commit failed %s", stageState)
+		return GitResultTypeNochange, nil
 	}
 	msg := fmt.Sprintf("%v %v", action, gitpath)
 	_, err = w.Commit(msg, &git.CommitOptions{
@@ -321,7 +338,7 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 	if err != nil {
 		return ret, fmt.Errorf("git commit %v %v", err, abspath)
 	}
-	ret = GitResultAdd
+	ret = GitResultTypeAdd
 	return ret, nil
 }
 
