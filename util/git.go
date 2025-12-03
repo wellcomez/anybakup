@@ -205,14 +205,12 @@ func (r GitRepo) GitRmFile(real_path RepoPath) (GitResult, error) {
 	os.Remove(abspath)
 
 	// gitfile := real_path.Sting()
-	stateBeofe, err := GetStateStage(abspath, &r)
+	state, err := r.Status(real_path)
 	if err != nil {
 		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
 	}
-	workstateBefore, err := GetStateWorkTree(abspath, &r)
-	if err != nil {
-		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
-	}
+	stateBeofe := state.Staging
+	workstateBefore := state.Worktree
 	fmt.Printf("%-10s rm %-50s work=%v staget=%v \n", "before", real_path, workstateBefore, stateBeofe)
 	if workstateBefore != GitDeleted {
 		return GitResultNochange, nil
@@ -221,14 +219,13 @@ func (r GitRepo) GitRmFile(real_path RepoPath) (GitResult, error) {
 	if err != nil {
 		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
 	}
-	stateAfter, err := GetStateStage(abspath, &r)
+
+	afterState, err := r.Status(real_path)
 	if err != nil {
 		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
 	}
-	workstateAfter, err := GetStateWorkTree(abspath, &r)
-	if err != nil {
-		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
-	}
+	workstateAfter := afterState.Worktree
+	stateAfter := afterState.Staging
 	fmt.Printf("%-10s rm %-50s work=%v staget=%v \n", "after", real_path, workstateAfter, stateAfter)
 	if yes := stateAfter == GitDeleted; !yes {
 		add = GitResultNochange
@@ -261,65 +258,71 @@ const (
 func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 	abspath := gitpath.ToAbs(r)
 	// gitfile := gitpath.Sting()
-	add := GitResultError
+	ret := GitResultError
 	repo, err := r.Open()
 	if err != nil {
-		return add, fmt.Errorf("git add %v", err)
+		return ret, fmt.Errorf("git add %v", err)
 	}
 	w, err := repo.Worktree()
 	if err != nil {
-		return add, fmt.Errorf("git add %v %v", err, abspath)
+		return ret, fmt.Errorf("git add %v %v", err, abspath)
 	}
 	fmt.Println("-----------------Before---------------")
-	stageState, _ := GetStateStage(abspath, nil)
-	workState, _ := GetStateWorkTree(abspath, nil)
+	state, err := r.Status(gitpath)
+	if err != nil {
+		return ret, fmt.Errorf("git add %v", err)
+	}
+	stageState := state.Staging
+	workState := state.Worktree
 	fmt.Printf("%-10s add %-50s s:%v w:%v\n", "Before", abspath, stageState, workState)
 	if needAdd := stageState != GitUnmodified || workState != GitUnmodified; !needAdd {
 		return GitResultNochange, nil
 	}
 	_, err = w.Add(gitpath.Sting())
 	if err != nil {
-		return add, fmt.Errorf("git add %v %v", err, abspath)
+		return ret, fmt.Errorf("git add %v %v", err, abspath)
 	}
 	fmt.Println("-----------------after----------------")
-	if AfterstageState, err := GetStateStage(abspath, nil); err == nil {
-		AfterworkState, err := GetStateWorkTree(abspath, nil)
-		if err != nil {
-			return add, fmt.Errorf("git add %v %v", err, abspath)
-		}
-		if ok := AfterworkState == GitUnmodified || AfterstageState == GitUntracked; !ok {
-			return add, fmt.Errorf("git add %v %v", err, abspath)
-		}
-		fmt.Printf("%-10s add %-50s s:%v w:%v\n", "after", abspath, AfterstageState, AfterworkState)
-		action := ""
-		switch AfterstageState {
-		case GitModified:
-			action = "UPDATE"
-		case GitAdded:
-			action = "ADD"
-		case GitUntracked:
-			if stageState == AfterstageState {
-				return GitResultNochange, nil
-			}
-		}
-		if action == "" {
-			return GitResultError, fmt.Errorf("git add-commit failed %s", stageState)
-		}
-		msg := fmt.Sprintf("%v %v", action, gitpath)
-		_, err = w.Commit(msg, &git.CommitOptions{
-			Author: &object.Signature{
-				Name: "anybakup",
-				When: time.Now(),
-			},
-		})
-		if err != nil {
-			return add, fmt.Errorf("git commit %v %v", err, abspath)
-		}
-		add = GitResultAdd
-		return add, nil
-	} else {
-		return add, fmt.Errorf("git add %v %v", err, abspath)
+
+	state, err = r.Status(gitpath)
+	if err != nil {
+		return ret, fmt.Errorf("git add %v", err)
 	}
+	AfterstageState := state.Staging
+	AfterworkState := state.Worktree
+	if err != nil {
+		return ret, fmt.Errorf("git add %v %v", err, abspath)
+	}
+	if ok := AfterworkState == GitUnmodified || AfterstageState == GitUntracked; !ok {
+		return ret, fmt.Errorf("git add %v %v", err, abspath)
+	}
+	fmt.Printf("%-10s add %-50s s:%v w:%v\n", "after", abspath, AfterstageState, AfterworkState)
+	action := ""
+	switch AfterstageState {
+	case GitModified:
+		action = "UPDATE"
+	case GitAdded:
+		action = "ADD"
+	case GitUntracked:
+		if stageState == AfterstageState {
+			return GitResultNochange, nil
+		}
+	}
+	if action == "" {
+		return GitResultError, fmt.Errorf("git add-commit failed %s", stageState)
+	}
+	msg := fmt.Sprintf("%v %v", action, gitpath)
+	_, err = w.Commit(msg, &git.CommitOptions{
+		Author: &object.Signature{
+			Name: "anybakup",
+			When: time.Now(),
+		},
+	})
+	if err != nil {
+		return ret, fmt.Errorf("git commit %v %v", err, abspath)
+	}
+	ret = GitResultAdd
+	return ret, nil
 }
 
 func (r GitRepo) GitViewFile(gitpath RepoPath, commitHash string, outpath string) (string, error) {
