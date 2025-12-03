@@ -71,17 +71,17 @@ func AddFile(arg string) (ret Result_git_add) {
 			ret.Err = err
 			return
 		}
-		if err := BakupOptAdd(file, ret.Dest, isfile,false); err != nil {
+		if err := BakupOptAdd(file, ret.Dest, isfile, false); err != nil {
 			fmt.Printf("failed to add sql backup record %v", err)
 		}
-		// if !isfile {
-		// 	for _, f := range yes.Files {
-		// 		if err := BakupOptAdd(fmt.Sprintf("/%v", f), f, true); err != nil {
-		// 			fmt.Printf("failed to add sql backup record %v", err)
-		// 		}
-
-		// 	}
-		// }
+		if !isfile {
+			for _, f := range yes.Files {
+				fmt.Printf("added %v\n", f)
+				if err := BakupOptAdd(fmt.Sprintf("/%v", f), f, true, true); err != nil {
+					fmt.Printf("failed to add sql backup record %v", err)
+				}
+			}
+		}
 	}
 	return
 }

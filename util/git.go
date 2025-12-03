@@ -30,14 +30,18 @@ type GitStatusResult struct {
 }
 
 func (s GitStatusResult) print(preifx string) {
+	fmt.Printf("%-10s status to string: %v", preifx, s.Status.String())
 	fmt.Printf("%-10s add %-50s s:%v w:%v\n", preifx, s.Path, s.Staging, s.Worktree)
 }
 
-func (s GitStatusResult) NeedGitCommitFiles(state git.StatusCode) (ret []string) {
+func (s GitStatusResult) NeedGitCommitFiles(states []git.StatusCode) (ret []string) {
 	for k, v := range s.Status {
 		status := v.Staging
-		if status == state {
-			ret = append(ret, k)
+		for _, state := range states {
+			if status == state {
+				ret = append(ret, k)
+				break
+			}
 		}
 	}
 	return
@@ -92,7 +96,6 @@ func (r *GitRepo) Status(gitfile RepoPath) (GitStatusResult, error) {
 		} else if status, err := w.Status(); err != nil {
 			return ret, fmt.Errorf("status file status %v", err)
 		} else {
-			fmt.Printf("status to string: %v", status.String())
 			st := status.File(gitfile.Sting())
 			ret.Staging = GetStatuscode(st.Staging)
 			ret.Worktree = GetStatuscode(st.Worktree)
@@ -299,6 +302,7 @@ func (r GitRepo) GitRmFile(real_path RepoPath) (GitResult, error) {
 		return add, nil
 	}
 }
+
 type GitResult struct {
 	Action GitAction
 	Files  []string
@@ -353,7 +357,8 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 		return ret, nil
 	}
 	msg := fmt.Sprintf("%v %v", action, gitpath)
-	ret.Files = state.NeedGitCommitFiles(git.Added)
+	options := []git.StatusCode{git.Added, git.Modified}
+	ret.Files = state.NeedGitCommitFiles(options)
 	_, err = w.Commit(msg, &git.CommitOptions{
 		Author: &object.Signature{
 			Name: "anybakup",
