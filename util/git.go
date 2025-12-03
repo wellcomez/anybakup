@@ -197,8 +197,14 @@ func (r GitRepo) GitRmFile(real_path RepoPath) (GitResult, error) {
 	if err != nil {
 		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
 	}
-	stateAfter, _ := GetStateStage(gitfile, &r)
-	workstateAfter, _ := GetStateWorkTree(gitfile, &r)
+	stateAfter, err := GetStateStage(gitfile, &r)
+	if err != nil {
+		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
+	}
+	workstateAfter, err := GetStateWorkTree(gitfile, &r)
+	if err != nil {
+		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
+	}
 	fmt.Printf("%-10s rm %-50s work=%v staget=%v \n", "after", gitfile, workstateAfter, stateAfter)
 	if yes := stateAfter == GitDeleted; !yes {
 		add = GitResultNochange
@@ -253,8 +259,11 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 	}
 	fmt.Println("-----------------after----------------")
 	if AfterstageState, err := GetStateStage(gitfile, nil); err == nil {
-		AfterworkState, _ := GetStateWorkTree(gitfile, nil)
+		AfterworkState, err := GetStateWorkTree(gitfile, nil)
 		if err != nil {
+			return add, fmt.Errorf("git add %v %v", err, file)
+		}
+		if AfterworkState != GitUnmodified {
 			return add, fmt.Errorf("git add %v %v", err, file)
 		}
 		fmt.Printf("%-10s add %-50s s:%v w:%v\n", "after", file, AfterstageState, AfterworkState)
@@ -270,7 +279,7 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 			}
 		}
 		if action == "" {
-			return GitResultError, fmt.Errorf("git add failed %s", stageState)
+			return GitResultError, fmt.Errorf("git add-commit failed %s", stageState)
 		}
 		msg := fmt.Sprintf("%v %v", action, gitpath)
 		_, err = w.Commit(msg, &git.CommitOptions{
