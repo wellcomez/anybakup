@@ -66,6 +66,16 @@ func (s GitStatusResult) NeedGitCommit() string {
 	return ""
 }
 
+func (s GitStatusResult) NeedGitAddFiles() (ret []string) {
+	for k, v := range s.Status {
+		status := v.Worktree
+		if status == git.Modified || status == git.Untracked {
+			ret = append(ret, k)
+		}
+	}
+	return ret
+}
+
 func (s GitStatusResult) NeedGitAdd() bool {
 	for _, v := range s.Status {
 		status := v.Worktree
@@ -336,6 +346,9 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 		return ret, fmt.Errorf("git add %v", err)
 	}
 	state.print("before")
+	for _, v := range state.NeedGitAddFiles() {
+		fmt.Printf(">>>>>find need to change %v\n", v)
+	}
 	if !state.NeedGitAdd() {
 		ret.Action = GitResultTypeNochange
 		return ret, nil
@@ -352,6 +365,7 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 	}
 	state.print("after")
 	action := state.NeedGitCommit()
+	fmt.Printf("action %s\n", action)
 	if action == "" {
 		ret.Action = GitResultTypeNochange
 		return ret, nil
@@ -359,6 +373,9 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 	msg := fmt.Sprintf("%v %v", action, gitpath)
 	options := []git.StatusCode{git.Added, git.Modified}
 	ret.Files = state.NeedGitCommitFiles(options)
+	for _, k := range ret.Files {
+		fmt.Printf(">>>>need to commit %v\n", k)
+	}
 	_, err = w.Commit(msg, &git.CommitOptions{
 		Author: &object.Signature{
 			Name: "anybakup",
