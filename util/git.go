@@ -299,9 +299,9 @@ func (r GitRepo) GitRmFile(real_path RepoPath) (GitResult, error) {
 		return add, nil
 	}
 }
-
 type GitResult struct {
 	Action GitAction
+	Files  []string
 }
 type GitAction string
 
@@ -353,6 +353,7 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 		return ret, nil
 	}
 	msg := fmt.Sprintf("%v %v", action, gitpath)
+	ret.Files = state.NeedGitCommitFiles(git.Added)
 	_, err = w.Commit(msg, &git.CommitOptions{
 		Author: &object.Signature{
 			Name: "anybakup",

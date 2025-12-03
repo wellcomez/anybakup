@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -77,8 +78,32 @@ func TestGitAddFile(t *testing.T) {
 	if ret.Action != util.GitResultTypeAdd {
 		t.Errorf("Expected GitResultAdd, got %v", ret)
 	}
-	if err := cmd.BakupOptAdd(testFile, repodir.Sting(), false); err != nil {
-		t.Errorf("Expected GitResultAdd, got %v", ret)
+	if len(ret.Files) != 1 {
+		t.Errorf("Expected GitResultAdd, got %v", ret.Files)
+	}
+
+	for _, v := range ret.Files {
+		if err := cmd.BakupOptAdd(testFile, v, false); err != nil {
+			t.Errorf("Expected GitResultAdd, got %v", ret)
+		}
+	}
+
+	if err := os.WriteFile(testFile, []byte("test content xx"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+	repodir, err = r.CopyToRepo(util.SrcPath(testFile))
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+	ret, err = r.GitAddFile(repodir)
+	if err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
+
+	for _, v := range ret.Files {
+		if err := cmd.BakupOptAdd(testFile, v, false); err != nil {
+			t.Errorf("Expected GitResultAdd, got %v", ret)
+		}
 	}
 }
 
@@ -89,6 +114,10 @@ func TestGitAddDir(t *testing.T) {
 	}
 
 	tmpDir, err := os.MkdirTemp("", "anybakup-git-test-*")
+	if err != nil {
+		t.Fatalf(" create tmepdir dir: %v", err)
+		return
+	}
 	// Initialize git repo
 	// if err := Initgit(); err != nil {
 	// 	t.Fatalf("Initgit failed: %v", err)
@@ -124,6 +153,59 @@ func TestGitAddDir(t *testing.T) {
 	if err := cmd.BakupOptAdd(dir1, repodir.Sting(), false); err != nil {
 		t.Errorf("Expected GitResultAdd, got %v", ret)
 	}
+	for _, v := range ret.Files {
+		if err := cmd.BakupOptAdd(fmt.Sprintf("/%v", v), v, true); err != nil {
+			t.Errorf("Expected GitResultAdd, got %v", ret)
+		}
+	}
+
+	testFile2 = filepath.Join(dir1, "test2.txt")
+	if err := os.WriteFile(testFile2, []byte("test content"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// Add the file (using relative path from repo root)
+	srcdir = util.SrcPath(dir1)
+	repodir, err = r.CopyToRepo(srcdir)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+	ret, err = r.GitAddFile(repodir)
+	if err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
+	if ret.Action != util.GitResultTypeNochange {
+		t.Errorf("Expected GitResultAdd, got %v", ret)
+	}
+
+	testFile2 = filepath.Join(dir1, "test2.txt")
+	if err := os.WriteFile(testFile2, []byte("test contentxxx"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// Add the file (using relative path from repo root)
+	srcdir = util.SrcPath(dir1)
+	repodir, err = r.CopyToRepo(srcdir)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+	ret, err = r.GitAddFile(repodir)
+	if err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
+	if ret.Action != util.GitResultTypeAdd{
+		t.Errorf("Expected GitResultAdd, got %v", ret)
+	}
+
+	if err := cmd.BakupOptAdd(dir1, repodir.Sting(), false); err != nil {
+		t.Errorf("Expected GitResultAdd, got %v", ret)
+	}
+	for _, v := range ret.Files {
+		if err := cmd.BakupOptAdd(fmt.Sprintf("/%v", v), v, true); err != nil {
+			t.Errorf("Expected GitResultAdd, got %v", ret)
+		}
+	}
+
 	// repo, err := r.Open()
 	// if err != nil {
 	// 	t.Fatalf("Failed to open repo: %v", err)
