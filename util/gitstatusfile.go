@@ -36,70 +36,46 @@ func GetStateStage(file string, repo *GitRepo) (StatusCode, error) {
 		r, _ := NewGitReop()
 		repo = r
 	}
-	status, err := CheckStatus(repo.repo)
-	if err != nil {
+	if r, err := repo.Status(RepoPath(repo.AbsRepo2Repo(file).Sting())); err != nil {
 		return GitStatusErro, err
+	} else {
+		return r.Staging, nil
 	}
-	gitfile, err := repo.rel(file)
-	if err != nil {
-		return GitStatusErro, err
-	}
-	st := status.File(gitfile)
-	newVar := st.Staging
-	switch newVar {
-	case git.Unmodified:
-		return GitUnmodified, nil
-	case git.Untracked:
-		return GitUntracked, nil
-	case git.Modified:
-		return GitModified, nil
-	case git.Added:
-		return GitAdded, nil
-	case git.Deleted:
-		return GitDeleted, nil
-	case git.Renamed:
-		return GitRenamed, nil
-	case git.Copied:
-		return GitCopied, nil
-	case git.UpdatedButUnmerged:
-		return GitUpdatedButUnmerged, nil
-	}
-	return GitStatusErro, fmt.Errorf("workstate %v %v", st.Worktree, file)
 }
+
 func GetStateWorkTree(file string, repo *GitRepo) (StatusCode, error) {
 	if repo == nil {
 		r, _ := NewGitReop()
 		repo = r
 	}
-	status, err := CheckStatus(repo.repo)
-	if err != nil {
+	if r, err := repo.Status(repo.AbsRepo2Repo(file)); err != nil {
 		return GitStatusErro, err
+	} else {
+		return r.Worktree, nil
 	}
-	gitfile, err := repo.rel(file)
-	if err != nil {
-		return GitStatusErro, err
-	}
-	st := status.File(gitfile)
-	newVar := st.Worktree
+}
+
+func GetStatuscode(newVar git.StatusCode) StatusCode {
 	switch newVar {
 	case git.Unmodified:
-		return GitUnmodified, nil
+		return GitUnmodified
 	case git.Untracked:
-		return GitUntracked, nil
+		return GitUntracked
 	case git.Modified:
-		return GitModified, nil
+		return GitModified
 	case git.Added:
-		return GitAdded, nil
+		return GitAdded
 	case git.Deleted:
-		return GitDeleted, nil
+		return GitDeleted
 	case git.Renamed:
-		return GitRenamed, nil
+		return GitRenamed
 	case git.Copied:
-		return GitCopied, nil
+		return GitCopied
 	case git.UpdatedButUnmerged:
-		return GitUpdatedButUnmerged, nil
+		return GitUpdatedButUnmerged
+	default:
+		return GitStatusErro
 	}
-	return GitStatusErro, fmt.Errorf("workstate %v %v", st.Worktree, file)
 }
 
 type StatusCode string

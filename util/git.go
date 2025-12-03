@@ -21,7 +21,31 @@ type (
 		repo *git.Repository
 	}
 )
+type GitStatusResult struct {
+	Staging  StatusCode
+	Worktree StatusCode
+}
 
+func (r *GitRepo) Status(gitfile RepoPath) (GitStatusResult, error) {
+	ret := GitStatusResult{Staging: GitStatusErro, Worktree: GitStatusErro}
+	if git, err := r.Open(); err != nil {
+		return ret, fmt.Errorf("status file Open %v", err)
+	} else {
+		if w, err := git.Worktree(); err != nil {
+			return ret, fmt.Errorf("status file worktree %v", err)
+		} else if status, err := w.Status(); err != nil {
+			return ret, fmt.Errorf("status file status %v", err)
+		} else {
+			fmt.Printf("status to string: %v", status.String())
+			st := status.File(gitfile.Sting())
+			return GitStatusResult{
+				Staging:  GetStatuscode(st.Staging),
+				Worktree: GetStatuscode(st.Worktree),
+			}, nil
+		}
+
+	}
+}
 func (s SrcPath) Repo(d RepoRoot) RepoPath {
 	rel, err := filepath.Rel("/", string(s))
 	if err != nil {
@@ -43,7 +67,7 @@ func (s RepoPath) ToAbs(repo GitRepo) string {
 	return r.With(s.Sting())
 }
 
-func (r GitRepo) rel(s string) (string, error) {
+func (r GitRepo) Rel(s string) (string, error) {
 	if !filepath.IsAbs(s) {
 		// f := filepath.Join(r.root, s)
 		// if _, err := os.Stat(f); err != nil {
@@ -180,32 +204,32 @@ func (r GitRepo) GitRmFile(real_path RepoPath) (GitResult, error) {
 	abspath := real_path.ToAbs(r)
 	os.Remove(abspath)
 
-	gitfile := real_path.Sting()
-	stateBeofe, err := GetStateStage(gitfile, &r)
+	// gitfile := real_path.Sting()
+	stateBeofe, err := GetStateStage(abspath, &r)
 	if err != nil {
 		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
 	}
-	workstateBefore, err := GetStateWorkTree(gitfile, &r)
+	workstateBefore, err := GetStateWorkTree(abspath, &r)
 	if err != nil {
 		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
 	}
-	fmt.Printf("%-10s rm %-50s work=%v staget=%v \n", "before", gitfile, workstateBefore, stateBeofe)
+	fmt.Printf("%-10s rm %-50s work=%v staget=%v \n", "before", real_path, workstateBefore, stateBeofe)
 	if workstateBefore != GitDeleted {
 		return GitResultNochange, nil
 	}
-	_, err = w.Remove(gitfile)
+	_, err = w.Remove(string(real_path))
 	if err != nil {
 		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
 	}
-	stateAfter, err := GetStateStage(gitfile, &r)
+	stateAfter, err := GetStateStage(abspath, &r)
 	if err != nil {
 		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
 	}
-	workstateAfter, err := GetStateWorkTree(gitfile, &r)
+	workstateAfter, err := GetStateWorkTree(abspath, &r)
 	if err != nil {
 		return add, fmt.Errorf("git rm err=%v file=%v", err, real_path)
 	}
-	fmt.Printf("%-10s rm %-50s work=%v staget=%v \n", "after", gitfile, workstateAfter, stateAfter)
+	fmt.Printf("%-10s rm %-50s work=%v staget=%v \n", "after", real_path, workstateAfter, stateAfter)
 	if yes := stateAfter == GitDeleted; !yes {
 		add = GitResultNochange
 		return add, nil
@@ -218,7 +242,7 @@ func (r GitRepo) GitRmFile(real_path RepoPath) (GitResult, error) {
 			},
 		})
 		if err != nil {
-			return add, fmt.Errorf("git commit err=%v file=%v:%v", err, gitfile, real_path)
+			return add, fmt.Errorf("git commit err=%v file=%v:%v", err, real_path, real_path)
 		}
 		add = GitResultRm
 		return add, nil
@@ -235,8 +259,8 @@ const (
 )
 
 func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
-	file := gitpath.ToAbs(r)
-	gitfile := gitpath.Sting()
+	abspath := gitpath.ToAbs(r)
+	// gitfile := gitpath.Sting()
 	add := GitResultError
 	repo, err := r.Open()
 	if err != nil {
@@ -244,29 +268,29 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 	}
 	w, err := repo.Worktree()
 	if err != nil {
-		return add, fmt.Errorf("git add %v %v", err, file)
+		return add, fmt.Errorf("git add %v %v", err, abspath)
 	}
 	fmt.Println("-----------------Before---------------")
-	stageState, _ := GetStateStage(gitfile, nil)
-	workState, _ := GetStateWorkTree(gitfile, nil)
-	fmt.Printf("%-10s add %-50s s:%v w:%v\n", "Before", file, stageState, workState)
+	stageState, _ := GetStateStage(abspath, nil)
+	workState, _ := GetStateWorkTree(abspath, nil)
+	fmt.Printf("%-10s add %-50s s:%v w:%v\n", "Before", abspath, stageState, workState)
 	if needAdd := stageState != GitUnmodified || workState != GitUnmodified; !needAdd {
 		return GitResultNochange, nil
 	}
-	_, err = w.Add(gitfile)
+	_, err = w.Add(gitpath.Sting())
 	if err != nil {
-		return add, fmt.Errorf("git add %v %v", err, file)
+		return add, fmt.Errorf("git add %v %v", err, abspath)
 	}
 	fmt.Println("-----------------after----------------")
-	if AfterstageState, err := GetStateStage(gitfile, nil); err == nil {
-		AfterworkState, err := GetStateWorkTree(gitfile, nil)
+	if AfterstageState, err := GetStateStage(abspath, nil); err == nil {
+		AfterworkState, err := GetStateWorkTree(abspath, nil)
 		if err != nil {
-			return add, fmt.Errorf("git add %v %v", err, file)
+			return add, fmt.Errorf("git add %v %v", err, abspath)
 		}
-		if AfterworkState != GitUnmodified {
-			return add, fmt.Errorf("git add %v %v", err, file)
+		if ok := AfterworkState == GitUnmodified || AfterstageState == GitUntracked; !ok {
+			return add, fmt.Errorf("git add %v %v", err, abspath)
 		}
-		fmt.Printf("%-10s add %-50s s:%v w:%v\n", "after", file, AfterstageState, AfterworkState)
+		fmt.Printf("%-10s add %-50s s:%v w:%v\n", "after", abspath, AfterstageState, AfterworkState)
 		action := ""
 		switch AfterstageState {
 		case GitModified:
@@ -289,12 +313,12 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 			},
 		})
 		if err != nil {
-			return add, fmt.Errorf("git commit %v %v", err, file)
+			return add, fmt.Errorf("git commit %v %v", err, abspath)
 		}
 		add = GitResultAdd
 		return add, nil
 	} else {
-		return add, fmt.Errorf("git add %v %v", err, file)
+		return add, fmt.Errorf("git add %v %v", err, abspath)
 	}
 }
 
@@ -355,7 +379,7 @@ func (r GitRepo) GitDiffFile(file string) (string, error) {
 		return "", fmt.Errorf("git diff %v", err)
 	}
 
-	gitfile, err := r.rel(file)
+	gitfile, err := r.Rel(file)
 	if err != nil {
 		return "", fmt.Errorf("git diff %v %v", err, file)
 	}
