@@ -123,7 +123,7 @@ func BackupOptAddC(srcFile *C.char, destFile *C.char, isFile C.int) C.int {
 	goDestFile := C.GoString(destFile)
 	goIsFile := isFile != 0
 
-	err := cmd.BackupOptAdd(goSrcFile, goDestFile, goIsFile)
+	err := cmd.BakupOptAdd(goSrcFile, goDestFile, goIsFile)
 	if err != nil {
 		return -2
 	}
@@ -140,7 +140,7 @@ func BackupOptRmC(file *C.char) C.int {
 	}
 
 	goFile := C.GoString(file)
-	err := cmd.BackupOptRm(goFile)
+	err := cmd.BakupOptRm(goFile)
 	if err != nil {
 		return -2
 	}
@@ -232,12 +232,12 @@ func RmFileC(filePath *C.char) C.int {
 
 	goFilePath := C.GoString(filePath)
 	err := cmd.RmFile(goFilePath)
-	fmt.Println("RmFileC", err)
 	if err != nil {
+		fmt.Printf("RmFileC failed %v err=%v", goFilePath, err)
 		return -2
 		// return C.CString(fmt.Sprintf("error: %v", err))
 	}
-
+	fmt.Printf("RmFileC success %v", goFilePath)
 	return 0
 }
 

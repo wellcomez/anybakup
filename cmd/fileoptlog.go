@@ -77,7 +77,7 @@ func (s *sqldb) Close() error {
 	return s.db.Close()
 }
 
-func BackupOptAdd(srcFile, destFile string, isFile bool) error {
+func BakupOptAdd(srcFile, destFile string, isFile bool) error {
 	revcount := 0
 	if count, err := GetFileLog(srcFile); err != nil {
 		return err
@@ -127,7 +127,7 @@ func BackupOptAdd(srcFile, destFile string, isFile bool) error {
 	return nil
 }
 
-func BackupOptRm(file string) error {
+func BakupOptRm(file string) error {
 	db, err := NewSqldb()
 	if err != nil {
 		fmt.Printf("SQL Deleted file operation for 1 %s\n", file)

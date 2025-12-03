@@ -63,11 +63,14 @@ func AddFile(arg string) (ret Result_git_add) {
 		case util.GitResultNochange:
 			ret.Dest = dest.Sting()
 		default:
-			ret.Err = fmt.Errorf("unknown result %v", yes)
+			ret.Err = fmt.Errorf("add  unexpected result %v", yes)
+			return
 		}
 	}
 	isfile, err := IsFile(file)
-	BackupOptAdd(file, ret.Dest, isfile)
+	if err := BakupOptAdd(file, ret.Dest, isfile); err != nil {
+		fmt.Printf("failed to add sql backup record %v", err)
+	}
 	return
 }
 
@@ -83,17 +86,16 @@ func RmFile(arg string) error {
 	if yes, err := repo.GitRmFile(repo.Src2Repo(file)); err != nil {
 		return err
 	} else {
-		fmt.Printf("rm rc=%v\n", yes)
 		switch yes {
 		case util.GitResultRm:
 			break
 		case util.GitResultNochange:
 			break
 		default:
-			return fmt.Errorf("unknown result %v", yes)
+			return fmt.Errorf("rm unexpected  result %v", yes)
 		}
 	}
-	if err := BackupOptRm(file); err != nil {
+	if err := BakupOptRm(file); err != nil {
 		fmt.Println(err)
 	}
 	return nil
