@@ -12,27 +12,27 @@ import (
 )
 
 // setupGitTestEnv creates a temporary test environment with config and git repo
-func setupGitTestEnv(t *testing.T) (c *Config, cleanup func()) {
+func setupGitTestEnv(t *testing.T) (repoDir string, config *Config, cleanup func()) {
 	// Create temporary directories
 	tmpDir, err := os.MkdirTemp("", "anybakup-git-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 
-	repoDir := filepath.Join(tmpDir, "repo")
-	if err := os.MkdirAll(repoDir, 0o755); err != nil {
+	repoDir = filepath.Join(tmpDir, "repo")
+	if err := os.MkdirAll(repoDir, 0755); err != nil {
 		t.Fatalf("Failed to create repo dir: %v", err)
 	}
 
 	// Create config directory and file
 	configDir := filepath.Join(tmpDir, ".config", "anybakup")
-	if err := os.MkdirAll(configDir, 0o755); err != nil {
+	if err := os.MkdirAll(configDir, 0755); err != nil {
 		t.Fatalf("Failed to create config dir: %v", err)
 	}
 
 	configFile := filepath.Join(configDir, "config.yaml")
 	configContent := "repodir: " + repoDir + "\n"
-	if err := os.WriteFile(configFile, []byte(configContent), 0o644); err != nil {
+	if err := os.WriteFile(configFile, []byte(configContent), 0644); err != nil {
 		t.Fatalf("Failed to write config file: %v", err)
 	}
 
@@ -45,12 +45,12 @@ func setupGitTestEnv(t *testing.T) (c *Config, cleanup func()) {
 		os.RemoveAll(tmpDir)
 	}
 
-	return &Config{RepoDir: RepoRoot(repoDir)}, cleanup
+	return repoDir, &Config{RepoDir: RepoRoot(repoDir)}, cleanup
 }
 
 // TestInitgit tests initializing a git repository
 func TestInitgit(t *testing.T) {
-	c, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
 	// Initialize git repo
@@ -60,13 +60,13 @@ func TestInitgit(t *testing.T) {
 	}
 
 	// Verify .git directory exists
-	gitDir := filepath.Join(c.RepoDir.String(), ".git")
+	gitDir := filepath.Join(repoDir, ".git")
 	if info, err := os.Stat(gitDir); err != nil || !info.IsDir() {
 		t.Fatalf("Git directory not created: %v", err)
 	}
 
 	// Verify we can open the repo
-	repo, err := git.PlainOpen(c.RepoDir.String())
+	repo, err := git.PlainOpen(repoDir)
 	if err != nil {
 		t.Fatalf("Failed to open git repo: %v", err)
 	}
@@ -76,18 +76,12 @@ func TestInitgit(t *testing.T) {
 }
 
 // TestGitAddFile tests adding and committing a file
-// TestGitRmFile 是一个测试函数，用于测试Git删除文件的功能
 func TestGitRmFile(t *testing.T) {
-	// 设置Git测试环境，获取仓库目录和清理函数
-	c, cleanup := setupGitTestEnv(t)
-	// 使用defer确保在测试结束后清理测试环境
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	// 设置并添加一个文件到Git仓库，获取仓库对象和文件变量
-	r, newVar := setupAddFile(t, c.RepoDir.String(), c)
-	// 第一次尝试删除文件
+	r, newVar := setupAddFile(t, repoDir, c)
 	if ret, err := r.GitRmFile(newVar); err != nil {
-		// 如果删除操作失败，则测试失败
 		t.Fatalf("GitRmFile failed: %v", err)
 	} else if ret.Action != GitResultTypeRm {
 		t.Errorf("Expected GitResultRm, got %v", ret)
@@ -98,10 +92,11 @@ func TestGitRmFile(t *testing.T) {
 	if ret, err := r.GitRmFile(newVar); err != nil {
 		t.Fatalf("GitRmFile failed: %v", err)
 	} else if ret.Action != GitResultTypeNochange {
-		t.Errorf("Expected GitResultNochange, got %v", ret)
+		t.Errorf("Expected GitResultRm, got %v", ret)
 	} else if len(ret.Files) != 0 {
-		t.Errorf("Expected 0 files, got %v", len(ret.Files))
+		t.Errorf("Expected 1 file, got %v", ret)
 	}
+
 }
 
 func setupAddFile(t *testing.T, repoDir string, c *Config) (*GitRepo, RepoPath) {
@@ -117,7 +112,7 @@ func setupAddFile(t *testing.T, repoDir string, c *Config) (*GitRepo, RepoPath) 
 
 	// Create a test file in the repo
 	testFile := filepath.Join(repoDir, "test.txt")
-	if err := os.WriteFile(testFile, []byte("test content"), 0o644); err != nil {
+	if err := os.WriteFile(testFile, []byte("test content"), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -155,12 +150,11 @@ func setupAddFile(t *testing.T, repoDir string, c *Config) (*GitRepo, RepoPath) 
 	}
 	return r, newVar
 }
-
 func TestGitAddDir(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	r, err := NewGitReop(repoDir)
+	r, err := NewGitReop(c)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
@@ -171,16 +165,16 @@ func TestGitAddDir(t *testing.T) {
 	// }
 
 	// Create a test file in the repo
-	dir1 := filepath.Join(repoDir.RepoDir.String(), "dir1")
-	if err := os.MkdirAll(dir1, 0o755); err != nil {
+	dir1 := filepath.Join(repoDir, "dir1")
+	if err := os.MkdirAll(dir1, 0755); err != nil {
 		t.Fatalf("Failed to create dir: %v", err)
 	}
 	testFile := filepath.Join(dir1, "test.txt")
-	if err := os.WriteFile(testFile, []byte("test content"), 0o644); err != nil {
+	if err := os.WriteFile(testFile, []byte("test content"), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 	testFile2 := filepath.Join(dir1, "test2.txt")
-	if err := os.WriteFile(testFile2, []byte("test content"), 0o644); err != nil {
+	if err := os.WriteFile(testFile2, []byte("test content"), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -230,10 +224,10 @@ func TestGitAddDir(t *testing.T) {
 
 // TestGitAddFile tests adding and committing a file
 func TestGitAddFile(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	r, err := NewGitReop(repoDir)
+	r, err := NewGitReop(c)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
@@ -244,8 +238,8 @@ func TestGitAddFile(t *testing.T) {
 	// }
 
 	// Create a test file in the repo
-	testFile := filepath.Join(repoDir.RepoDir.String(), "test.txt")
-	if err := os.WriteFile(testFile, []byte("test content"), 0o644); err != nil {
+	testFile := filepath.Join(repoDir, "test.txt")
+	if err := os.WriteFile(testFile, []byte("test content"), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -295,10 +289,10 @@ func TestGitAddFile(t *testing.T) {
 
 // TestGitAddFile_MultipleFiles tests adding multiple files
 func TestGitAddFile_MultipleFiles(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	r, err := NewGitReop(repoDir)
+	r, err := NewGitReop(c)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
@@ -311,8 +305,8 @@ func TestGitAddFile_MultipleFiles(t *testing.T) {
 	// Create multiple test files
 	files := []string{"file1.txt", "file2.txt", "file3.txt"}
 	for _, filename := range files {
-		testFile := filepath.Join(repoDir.RepoDir.String(), filename)
-		if err := os.WriteFile(testFile, []byte("content of "+filename), 0o644); err != nil {
+		testFile := filepath.Join(repoDir, filename)
+		if err := os.WriteFile(testFile, []byte("content of "+filename), 0644); err != nil {
 			t.Fatalf("Failed to create test file %s: %v", filename, err)
 		}
 	}
@@ -325,7 +319,7 @@ func TestGitAddFile_MultipleFiles(t *testing.T) {
 	}
 
 	// Verify we have 3 commits
-	repo, err := git.PlainOpen(repoDir.RepoDir.String())
+	repo, err := git.PlainOpen(repoDir)
 	if err != nil {
 		t.Fatalf("Failed to open repo: %v", err)
 	}
@@ -351,10 +345,10 @@ func TestGitAddFile_MultipleFiles(t *testing.T) {
 
 // TestGitAddFile_Subdirectory tests adding a file in a subdirectory
 func TestGitAddFile_Subdirectory(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	r, err := NewGitReop(repoDir)
+	r, err := NewGitReop(c)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
@@ -365,13 +359,13 @@ func TestGitAddFile_Subdirectory(t *testing.T) {
 	// }
 
 	// Create a subdirectory and file
-	subDir := filepath.Join(repoDir.RepoDir.String(), "subdir")
-	if err := os.MkdirAll(subDir, 0o755); err != nil {
+	subDir := filepath.Join(repoDir, "subdir")
+	if err := os.MkdirAll(subDir, 0755); err != nil {
 		t.Fatalf("Failed to create subdir: %v", err)
 	}
 
 	testFile := filepath.Join(subDir, "test.txt")
-	if err := os.WriteFile(testFile, []byte("test content"), 0o644); err != nil {
+	if err := os.WriteFile(testFile, []byte("test content"), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -382,7 +376,7 @@ func TestGitAddFile_Subdirectory(t *testing.T) {
 	}
 
 	// Verify the file was committed
-	repo, err := git.PlainOpen(repoDir.RepoDir.String())
+	repo, err := git.PlainOpen(repoDir)
 	if err != nil {
 		t.Fatalf("Failed to open repo: %v", err)
 	}
@@ -411,10 +405,10 @@ func TestGitAddFile_Subdirectory(t *testing.T) {
 
 // TestGitDiffFile tests checking file differences
 func TestGitDiffFile(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	r, err := NewGitReop(repoDir)
+	r, err := NewGitReop(c)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
@@ -425,8 +419,8 @@ func TestGitDiffFile(t *testing.T) {
 	// }
 
 	// Create and add a file
-	testFile := filepath.Join(repoDir.RepoDir.String(), "test.txt")
-	if err := os.WriteFile(testFile, []byte("initial content"), 0o644); err != nil {
+	testFile := filepath.Join(repoDir, "test.txt")
+	if err := os.WriteFile(testFile, []byte("initial content"), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -445,7 +439,7 @@ func TestGitDiffFile(t *testing.T) {
 	}
 
 	// Modify the file
-	if err := os.WriteFile(testFile, []byte("modified content"), 0o644); err != nil {
+	if err := os.WriteFile(testFile, []byte("modified content"), 0644); err != nil {
 		t.Fatalf("Failed to modify test file: %v", err)
 	}
 
@@ -464,10 +458,10 @@ func TestGitDiffFile(t *testing.T) {
 
 // TestGitDiffFile_NewFile tests diff for a new file not in HEAD
 func TestGitDiffFile_NewFile(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	r, err := NewGitReop(repoDir)
+	r, err := NewGitReop(c)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
@@ -478,8 +472,8 @@ func TestGitDiffFile_NewFile(t *testing.T) {
 	// }
 
 	// Create initial file to have a commit
-	testFile1 := filepath.Join(repoDir.RepoDir.String(), "file1.txt")
-	if err := os.WriteFile(testFile1, []byte("file1"), 0o644); err != nil {
+	testFile1 := filepath.Join(repoDir, "file1.txt")
+	if err := os.WriteFile(testFile1, []byte("file1"), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 	_, err = r.GitAddFile("file1.txt")
@@ -488,8 +482,8 @@ func TestGitDiffFile_NewFile(t *testing.T) {
 	}
 
 	// Create a new file not yet committed
-	testFile2 := filepath.Join(repoDir.RepoDir.String(), "newfile.txt")
-	if err := os.WriteFile(testFile2, []byte("new content"), 0o644); err != nil {
+	testFile2 := filepath.Join(repoDir, "newfile.txt")
+	if err := os.WriteFile(testFile2, []byte("new content"), 0644); err != nil {
 		t.Fatalf("Failed to create new file: %v", err)
 	}
 
@@ -505,10 +499,10 @@ func TestGitDiffFile_NewFile(t *testing.T) {
 
 // TestGitChangesFile tests getting commit history for a file
 func TestGitChangesFile(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	r, err := NewGitReop(repoDir)
+	r, err := NewGitReop(c)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
@@ -519,10 +513,10 @@ func TestGitChangesFile(t *testing.T) {
 	// }
 
 	// Create and commit a file multiple times
-	testFile := filepath.Join(repoDir.RepoDir.String(), "test.txt")
+	testFile := filepath.Join(repoDir, "test.txt")
 
 	// First commit
-	if err := os.WriteFile(testFile, []byte("version 1"), 0o644); err != nil {
+	if err := os.WriteFile(testFile, []byte("version 1"), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 	_, err = r.GitAddFile("test.txt")
@@ -531,7 +525,7 @@ func TestGitChangesFile(t *testing.T) {
 	}
 
 	// Second commit
-	if err := os.WriteFile(testFile, []byte("version 2"), 0o644); err != nil {
+	if err := os.WriteFile(testFile, []byte("version 2"), 0644); err != nil {
 		t.Fatalf("Failed to modify test file: %v", err)
 	}
 	_, err = r.GitAddFile("test.txt")
@@ -540,7 +534,7 @@ func TestGitChangesFile(t *testing.T) {
 	}
 
 	// Third commit
-	if err := os.WriteFile(testFile, []byte("version 3"), 0o644); err != nil {
+	if err := os.WriteFile(testFile, []byte("version 3"), 0644); err != nil {
 		t.Fatalf("Failed to modify test file: %v", err)
 	}
 	_, err = r.GitAddFile("test.txt")
@@ -589,10 +583,10 @@ func TestGitChangesFile(t *testing.T) {
 
 // TestGitChangesFile_NoCommits tests getting history for a file with no commits
 func TestGitChangesFile_NoCommits(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	r, err := NewGitReop(repoDir)
+	r, err := NewGitReop(c)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
@@ -603,8 +597,8 @@ func TestGitChangesFile_NoCommits(t *testing.T) {
 	// }
 
 	// Create a file to have at least one commit
-	testFile1 := filepath.Join(repoDir.RepoDir.String(), "file1.txt")
-	if err := os.WriteFile(testFile1, []byte("content"), 0o644); err != nil {
+	testFile1 := filepath.Join(repoDir, "file1.txt")
+	if err := os.WriteFile(testFile1, []byte("content"), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 	_, err = r.GitAddFile("file1.txt")
@@ -626,23 +620,24 @@ func TestGitChangesFile_NoCommits(t *testing.T) {
 
 // TestGitStatusFile tests checking git status
 func TestGitStatusFile(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
 	// Initialize git repo
 	// if err := Initgit(); err != nil {
 	// 	t.Fatalf("Initgit failed: %v", err)
 	// }
-	r, _ := NewGitReop(repoDir)
+
 	const newConst = "test.txt"
 	// Create and add a file
-	testFile := filepath.Join(repoDir.RepoDir.String(), newConst)
-	if err := os.WriteFile(testFile, []byte("test content"), 0o644); err != nil {
+	testFile := filepath.Join(repoDir, newConst)
+	if err := os.WriteFile(testFile, []byte("test content"), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
+	r, _ := NewGitReop(c)
 	// Add the file
-	if _,err:= r.GetStateStage(testFile); err != nil {
+	if _, err := r.GetStateStage(testFile); err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
 	gitapth := r.AbsRepo2Repo(testFile)
@@ -655,7 +650,7 @@ func TestGitStatusFile(t *testing.T) {
 	// 	t.Fatalf("GitAddFile failed: %v", err)
 	// }
 
-	if err := os.WriteFile(testFile, []byte("test content sss"), 0o644); err != nil {
+	if err := os.WriteFile(testFile, []byte("test content sss"), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -717,18 +712,18 @@ func TestGitStatusFile(t *testing.T) {
 
 // TestGitViewFile tests checking out a file from a specific commit
 func TestGitViewFile(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	r, err := NewGitReop(repoDir)
+	r, err := NewGitReop(c)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
 
 	// Create and commit a file with initial content
-	testFile := filepath.Join(repoDir.RepoDir.String(), "test.txt")
+	testFile := filepath.Join(repoDir, "test.txt")
 	initialContent := "version 1 content"
-	if err := os.WriteFile(testFile, []byte(initialContent), 0o644); err != nil {
+	if err := os.WriteFile(testFile, []byte(initialContent), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -751,7 +746,7 @@ func TestGitViewFile(t *testing.T) {
 
 	// Modify the file and commit again
 	modifiedContent := "version 2 content - modified"
-	if err := os.WriteFile(testFile, []byte(modifiedContent), 0o644); err != nil {
+	if err := os.WriteFile(testFile, []byte(modifiedContent), 0644); err != nil {
 		t.Fatalf("Failed to modify test file: %v", err)
 	}
 
@@ -761,8 +756,8 @@ func TestGitViewFile(t *testing.T) {
 	}
 
 	// Create output directory
-	outputDir := filepath.Join(repoDir.RepoDir.String(), "output")
-	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+	outputDir := filepath.Join(repoDir, "output")
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		t.Fatalf("Failed to create output dir: %v", err)
 	}
 
@@ -811,17 +806,17 @@ func TestGitViewFile(t *testing.T) {
 
 // TestGitViewFile_InvalidCommit tests error handling for invalid commit hash
 func TestGitViewFile_InvalidCommit(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	r, err := NewGitReop(repoDir)
+	r, err := NewGitReop(c)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
 
 	// Create and commit a file
-	testFile := filepath.Join(repoDir.RepoDir.String(), "test.txt")
-	if err := os.WriteFile(testFile, []byte("content"), 0o644); err != nil {
+	testFile := filepath.Join(repoDir, "test.txt")
+	if err := os.WriteFile(testFile, []byte("content"), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -831,7 +826,7 @@ func TestGitViewFile_InvalidCommit(t *testing.T) {
 	}
 
 	// Try to checkout with an invalid commit hash
-	outputFile := filepath.Join(repoDir.RepoDir.String(), "output.txt")
+	outputFile := filepath.Join(repoDir, "output.txt")
 	invalidHash := "0000000000000000000000000000000000000000"
 	_, err = r.GitViewFile(RepoPath("test.txt"), invalidHash, outputFile)
 	if err == nil {
@@ -845,17 +840,17 @@ func TestGitViewFile_InvalidCommit(t *testing.T) {
 
 // TestGitViewFile_FileNotInCommit tests error handling when file doesn't exist in commit
 func TestGitViewFile_FileNotInCommit(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	r, err := NewGitReop(repoDir)
+	r, err := NewGitReop(c)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
 
 	// Create and commit a file
-	testFile := filepath.Join(repoDir.RepoDir.String(), "existing.txt")
-	if err := os.WriteFile(testFile, []byte("content"), 0o644); err != nil {
+	testFile := filepath.Join(repoDir, "existing.txt")
+	if err := os.WriteFile(testFile, []byte("content"), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -877,7 +872,7 @@ func TestGitViewFile_FileNotInCommit(t *testing.T) {
 	commitHash := ref.Hash().String()
 
 	// Try to checkout a file that doesn't exist in this commit
-	outputFile := filepath.Join(repoDir.RepoDir.String(), "output.txt")
+	outputFile := filepath.Join(repoDir, "output.txt")
 	_, err = r.GitViewFile(RepoPath("nonexistent.txt"), commitHash, outputFile)
 	if err == nil {
 		t.Error("Expected error for nonexistent file, got nil")
