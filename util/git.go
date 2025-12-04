@@ -9,6 +9,7 @@ import (
 	"github.com/go-git/go-git/v6"
 	"github.com/go-git/go-git/v6/plumbing"
 	"github.com/go-git/go-git/v6/plumbing/object"
+	"github.com/spf13/afero"
 )
 
 type (
@@ -17,6 +18,7 @@ type (
 	SysPath  string
 	RepoRoot string
 	GitRepo  struct {
+		Fs   afero.Fs // Added Fs field to support file system operations
 		root string
 		repo *git.Repository
 	}
@@ -196,7 +198,33 @@ func isDir(path string) bool {
 	}
 	return st.IsDir()
 }
-
+func (r GitRepo) CleanEmptyDir(path string) (int, error) {
+	n := 0
+	if st, err := os.Stat(path); err != nil {
+		return 0, fmt.Errorf("stat err=%v path=%v", err, path)
+	} else if !st.IsDir() {
+		return 0, fmt.Errorf("path is not a directory")
+	}
+	dirs := []string{}
+	err := filepath.Walk(path, func(currentPath string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			dirs = append(dirs, currentPath)
+		}
+		return nil
+	})
+	for i := len(dirs) - 1; i >= 0; i-- {
+		if files, err := os.ReadDir(dirs[i]); err != nil {
+			continue
+		} else if len(files) == 0 {
+			os.RemoveAll(dirs[i])
+			n++
+		}
+	}
+	return n, err
+}
 func (r GitRepo) GitRmFile(realpath RepoPath) (GitResult, error) {
 	ret := GitResult{
 		Action: GitResultTypeError,

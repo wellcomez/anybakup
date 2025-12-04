@@ -46,7 +46,7 @@ import (
 // C-exportable wrapper for GetFileLog
 //
 //export GetFileLogC
-func GetFileLogC(profilename *C.char, filePath *C.char) *C.GitChangeArray {
+func GetFileLogC(filePath *C.char, profilename *C.char) *C.GitChangeArray {
 	if filePath == nil {
 		return nil
 	}
@@ -154,9 +154,8 @@ func GetFileLogC(profilename *C.char, filePath *C.char) *C.GitChangeArray {
 // C-exportable wrapper for GetAllOpt
 //
 //export GetAllOptC
-func GetAllOptC(profilename *C.char) *C.FileOperationArray {
-	g := cmd.NewGitCmd(C.GoString(profilename))
-	operations, err := cmd.GetAllOpt(g.C)
+func GetAllOptC() *C.FileOperationArray {
+	operations, err := cmd.GetAllOpt()
 	if err != nil {
 		return nil
 	}
@@ -233,16 +232,18 @@ func GetAllOptC(profilename *C.char) *C.FileOperationArray {
 // C-exportable wrapper for AddFile
 //
 //export RmFileC
-func RmFileC(profilename *C.char, filePath *C.char) C.int {
+func RmFileC(filePath *C.char) C.int {
 	if filePath == nil {
+		// return C.CString("error: file path is nil")
 		return -1
 	}
+	g := cmd.GitCmd{}
 	goFilePath := C.GoString(filePath)
-	g := cmd.NewGitCmd(C.GoString(profilename))
 	err := g.RmFile(util.RepoPath(goFilePath))
 	if err != nil {
 		fmt.Printf("RmFileC failed %v err=%v", goFilePath, err)
 		return -2
+		// return C.CString(fmt.Sprintf("error: %v", err))
 	}
 	fmt.Printf("RmFileC success %v", goFilePath)
 	return 0
@@ -251,35 +252,43 @@ func RmFileC(profilename *C.char, filePath *C.char) C.int {
 // C-exportable wrapper for AddFile
 //
 //export AddFileC
-func AddFileC(profilename *C.char, filePath *C.char) C.int {
+func AddFileC(filePath *C.char) C.int {
 	if filePath == nil {
+		// return C.CString("error: file path is nil")
 		return -1
 	}
+	g := cmd.GitCmd{}
 	goFilePath := C.GoString(filePath)
-	g := cmd.NewGitCmd(C.GoString(profilename))
 	result := g.AddFile(goFilePath)
 	if result.Err != nil {
 		return -2
+		// return C.CString(fmt.Sprintf("error: %v", result.Err))
 	}
+
 	return 0
 }
 
 // C-exportable wrapper for GetFile
 //
 //export GetFileC
-func GetFileC(profilename *C.char, filePath *C.char, commit *C.char, target *C.char) C.int {
+func GetFileC(filePath *C.char, commit *C.char, target *C.char) C.int {
 	if filePath == nil || target == nil {
 		return -1
+		// C.CString("error: file path or target is nil")
 	}
+
 	goFilePath := C.GoString(filePath)
 	goCommit := C.GoString(commit)
 	goTarget := C.GoString(target)
-	g := cmd.NewGitCmd(C.GoString(profilename))
+	g := cmd.GitCmd{}
 	err := g.GetFile(goFilePath, goCommit, goTarget)
 	if err != nil {
 		return -2
+		// return C.CString(fmt.Sprintf("error: %v", err))
 	}
+
 	return 0
+	// C.CString("success: file retrieved")
 }
 
 // Helper function to free C strings

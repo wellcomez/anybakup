@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-git/go-git/v6"
 	"github.com/go-git/go-git/v6/plumbing/object"
+	// "github.com/stretchr/testify/assert"
 )
 
 // setupGitTestEnv creates a temporary test environment with config and git repo
@@ -881,4 +882,91 @@ func TestGitViewFile_FileNotInCommit(t *testing.T) {
 	if !strings.Contains(err.Error(), "not found") {
 		t.Errorf("Expected error message about file not found, got: %v", err)
 	}
+}
+
+// TestCleanEmptyDir tests the CleanEmptyDir function with various scenarios.
+func TestCleanEmptyDir(t *testing.T) {
+	reporoot, c, clean := setupGitTestEnv(t)
+	defer clean()
+	// 使用 afero 模拟文件系统
+	// tmpDir, err := os.MkdirTemp("", "anybakup-git-test-*")
+	// if err!=nil {
+	// 	t.Fatal(err)
+	// }
+	repo, err := NewGitReop(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Run("Non-existent path", func(t *testing.T) {
+		// 测试路径不存在的情况
+		n, err := repo.CleanEmptyDir(filepath.Join(reporoot, "nonexistent"))
+		if n != 0 {
+			t.Fatal("Expected non-zero number of deleted files, got zero", err)
+		}
+	})
+
+	t.Run("Non-empty directory", func(t *testing.T) {
+		// 创建一个非空目录
+		dirPath := filepath.Join(reporoot, "nonempty")
+		os.MkdirAll(dirPath, 0755)
+		os.WriteFile(filepath.Join(dirPath, "file.txt"), []byte("content"), 0644)
+
+		n, err := repo.CleanEmptyDir(dirPath)
+		if n != 0 {
+			t.Fatal("Expected non-zero number of deleted files, got zero", err)
+		}
+	})
+
+	t.Run("Empty directory", func(t *testing.T) {
+		// 创建一个空目录
+		dirPath := filepath.Join(reporoot, "empty")
+		os.MkdirAll(dirPath, 0755)
+
+		n, err := repo.CleanEmptyDir(dirPath)
+		if n != 1 {
+			t.Fatal("Expected non-zero number of deleted files, got zero", err)
+		}
+	})
+	t.Run("Empty directory 2", func(t *testing.T) {
+		// 创建一个空目录
+		dirPath := filepath.Join(reporoot, "empty")
+		os.MkdirAll(dirPath, 0755)
+
+		if dirPath := filepath.Join(reporoot, "empty", "empty2"); os.MkdirAll(dirPath, 0755) == nil {
+
+		}
+
+		n, err := repo.CleanEmptyDir(dirPath)
+		if n != 2 {
+			t.Fatal("Expected non-zero number of deleted files, got zero", err)
+		}
+	})
+	t.Run("childe not empty", func(t *testing.T) {
+		// 创建一个空目录
+		dirPath := filepath.Join(reporoot, "empty")
+		os.MkdirAll(dirPath, 0755)
+
+		if dirPath := filepath.Join(reporoot, "empty", "empty2"); os.MkdirAll(dirPath, 0755) == nil {
+			if eerr := os.WriteFile(filepath.Join(dirPath, "1.txt"), []byte("content"), 0644); eerr != nil {
+				t.Fatal(eerr)
+			}
+		}
+
+		n, err := repo.CleanEmptyDir(dirPath)
+		if n != 0 {
+			t.Fatal("Expected non-zero number of deleted files, got zero", err)
+		}
+	})
+	// t.Run("File path", func(t *testing.T) {
+	// 	// 创建一个文件
+	// 	filePath := filepath.Join(reporoot, "file.txt")
+	// 	os.WriteFile(filePath, []byte("content"), 0644)
+
+	// 	err := repo.CleanEmptyDir(filePath)
+	// 	assert.NoError(t, err)
+	// 	if _, err = os.Stat(filePath); err != nil {
+	// 		t.Fatal(err)
+	// 	}
+	// })
+
 }
