@@ -24,8 +24,8 @@ func NewGitCmd(profilname string) *GitCmd {
 	}
 }
 
-// GetFileLog returns the git log for a specific file
-func (g GitCmd) GetFileLog(filePath string) ([]util.GitChanges, error) {
+// GetFileLogAbs returns the git log for a specific file
+func (g GitCmd) GetFileLogAbs(filePath string) ([]util.GitChanges, error) {
 	absFilePath, err := filepath.Abs(filePath)
 	if err != nil {
 		return nil, err
@@ -34,7 +34,15 @@ func (g GitCmd) GetFileLog(filePath string) ([]util.GitChanges, error) {
 	if err != nil {
 		return nil, err
 	}
-	logs, err := repo.GitLogFile(repo.Src2Repo(absFilePath))
+	return g.GetFileLog(repo.Src2Repo(absFilePath))
+}
+
+func (g GitCmd) GetFileLog(filePath util.RepoPath) ([]util.GitChanges, error) {
+	repo, err := util.NewGitReop(g.C)
+	if err != nil {
+		return nil, err
+	}
+	logs, err := repo.GitLogFile(filePath)
 	if err != nil {
 		return nil, err
 	}
@@ -137,11 +145,11 @@ func (g GitCmd) RmFile(gitPath util.RepoPath) error {
 			return fmt.Errorf("rm unexpected result %v", yes)
 		}
 		if err := BakupOptRm(gitPath, g.C); err != nil {
-			fmt.Println(err,gitPath)
+			fmt.Println(err, gitPath)
 		}
 		for _, v := range yes.Files {
 			if err := BakupOptRm(v, g.C); err != nil {
-				fmt.Println(err,v)
+				fmt.Println(err, v)
 			}
 		}
 		return nil

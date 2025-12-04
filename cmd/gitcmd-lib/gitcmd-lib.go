@@ -46,14 +46,14 @@ import (
 // C-exportable wrapper for GetFileLog
 //
 //export GetFileLogC
-func GetFileLogC(filePath *C.char, profilename *C.char) *C.GitChangeArray {
+func GetFileLogC(profilename *C.char, filePath *C.char) *C.GitChangeArray {
 	if filePath == nil {
 		return nil
 	}
 	goProfilename := C.GoString(profilename)
 	goFilePath := C.GoString(filePath)
 	g := cmd.NewGitCmd(goProfilename)
-	logs, err := g.GetFileLog(goFilePath)
+	logs, err := g.GetFileLog(util.RepoPath(goFilePath))
 	if err != nil {
 		return nil
 	}

@@ -29,7 +29,7 @@ var addCmd = &cobra.Command{
 
 func run_list_file(filePath string, print bool) []util.GitChanges {
 	g := NewGitCmd("")
-	if logs, err := g.GetFileLog(filePath); err != nil {
+	if logs, err := g.GetFileLogAbs(filePath); err != nil {
 		fmt.Printf("Error log file %v: [%v]\n", filePath, err)
 		return []util.GitChanges{}
 	} else if print {
