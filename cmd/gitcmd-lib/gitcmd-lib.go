@@ -264,6 +264,22 @@ func AddFileC(profilename *C.char, filePath *C.char) C.int {
 	return 0
 }
 
+// C-exportable wrapper for GitInitC
+//
+//export GitInitC
+func GitInitC(profilename *C.char, filePath *C.char) C.int {
+	if filePath == nil {
+		return -1
+	}
+	goFilePath := C.GoString(filePath)
+	goProfileName := C.GoString(profilename)
+	if err := cmd.GitInitProfile(goProfileName, goFilePath); err == nil {
+		return 0
+	} else {
+		return -1
+	}
+}
+
 // C-exportable wrapper for GetFile
 //
 //export GetFileC

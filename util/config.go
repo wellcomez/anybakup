@@ -14,7 +14,7 @@ type Profile struct {
 type Config struct {
 	RepoDir RepoRoot           `yaml:"repodir"`
 	Profile map[string]Profile `yaml:"profile"`
-	Default Profile            `yaml:"default"`
+	Default string
 }
 
 func (r RepoRoot) String() string {
@@ -31,14 +31,17 @@ func NewConfig() *Config {
 }
 func (c *Config) SetProfile(name string, p Profile) error {
 	if name == "" {
-		c.RepoDir = p.RepoDir
-		c.Default = p
-	} else {
-		c.Profile[name] = p
+		name = "default"
 	}
+	c.Profile[name] = p
+	c.Default = name
+	c.RepoDir = p.RepoDir
 	return c.Save()
 }
 func (c *Config) GetProfile(name string) *Config {
+	if name == "" {
+		name = "default"
+	}
 	if p, ok := c.Profile[name]; ok {
 		return &Config{RepoDir: p.RepoDir}
 	}
@@ -78,7 +81,6 @@ func (Config) Configdir() (string, error) {
 	return configDir, nil
 }
 func (c *Config) Save() error {
-	c.Default.RepoDir = c.RepoDir
 	configFilePath, err := c.configfile()
 	if err != nil {
 		return fmt.Errorf("error getting config file path: %v", err)
