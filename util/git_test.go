@@ -900,7 +900,7 @@ func TestCleanEmptyDir(t *testing.T) {
 	t.Run("Non-existent path", func(t *testing.T) {
 		// 测试路径不存在的情况
 		n, err := repo.CleanEmptyDir(filepath.Join(reporoot, "nonexistent"))
-		if n != 0 {
+		if len(n) != 0 {
 			t.Fatal("Expected non-zero number of deleted files, got zero", err)
 		}
 	})
@@ -912,7 +912,7 @@ func TestCleanEmptyDir(t *testing.T) {
 		os.WriteFile(filepath.Join(dirPath, "file.txt"), []byte("content"), 0644)
 
 		n, err := repo.CleanEmptyDir(dirPath)
-		if n != 0 {
+		if len(n) != 0 {
 			t.Fatal("Expected non-zero number of deleted files, got zero", err)
 		}
 	})
@@ -923,7 +923,7 @@ func TestCleanEmptyDir(t *testing.T) {
 		os.MkdirAll(dirPath, 0755)
 
 		n, err := repo.CleanEmptyDir(dirPath)
-		if n != 1 {
+		if len(n) != 1 {
 			t.Fatal("Expected non-zero number of deleted files, got zero", err)
 		}
 	})
@@ -936,7 +936,7 @@ func TestCleanEmptyDir(t *testing.T) {
 
 		}
 		n, err := repo.CleanEmptyDir(dirPath)
-		if n != 2 {
+		if len(n) != 2 {
 			t.Fatal("Expected non-zero number of deleted files, got zero", err)
 		}
 	})
@@ -952,7 +952,7 @@ func TestCleanEmptyDir(t *testing.T) {
 
 		}
 		n, err := repo.CleanEmptyDir(dirPath)
-		if n != 1 {
+		if len(n) != 1 {
 			t.Fatal("Expected non-zero number of deleted files, got zero", err)
 		}
 	})
@@ -968,7 +968,7 @@ func TestCleanEmptyDir(t *testing.T) {
 		}
 
 		n, err := repo.CleanEmptyDir(dirPath)
-		if n != 0 {
+		if len(n) != 0 {
 			t.Fatal("Expected non-zero number of deleted files, got zero", err)
 		}
 	})
@@ -1002,8 +1002,8 @@ func TestCleanEmptyDir(t *testing.T) {
 		}
 
 		// Should have deleted 3 directories: parent, child, and grandchild
-		if n != 3 {
-			t.Fatalf("Expected 3 deleted directories, got %d", n)
+		if len(n) != 3 {
+			t.Fatalf("Expected 3 deleted directories, got %d", len(n))
 		}
 
 		// Verify all nested directories have been deleted

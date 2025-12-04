@@ -152,6 +152,11 @@ func (g GitCmd) RmFile(gitPath util.RepoPath) error {
 				fmt.Println(err, v)
 			}
 		}
+		for _, v := range yes.Dirs {
+			if err := BakupOptRm(v, g.C); err != nil {
+				fmt.Println(err, v)
+			}
+		}
 		return nil
 	}
 }

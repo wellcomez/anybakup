@@ -199,12 +199,12 @@ func isDir(path string) bool {
 	}
 	return st.IsDir()
 }
-func (r GitRepo) CleanEmptyDir(path string) (int, error) {
-	n := 0
+func (r GitRepo) CleanEmptyDir(path string) ([]RepoPath, error) {
+	n := []RepoPath{}
 	if st, err := os.Stat(path); err != nil {
-		return 0, fmt.Errorf("stat err=%v path=%v", err, path)
+		return n, fmt.Errorf("stat err=%v path=%v", err, path)
 	} else if !st.IsDir() {
-		return 0, fmt.Errorf("path is not a directory")
+		return n, fmt.Errorf("path is not a directory")
 	}
 	dirs := []string{}
 	err := filepath.Walk(path, func(currentPath string, info os.FileInfo, err error) error {
@@ -218,7 +218,7 @@ func (r GitRepo) CleanEmptyDir(path string) (int, error) {
 	})
 	for i := len(dirs) - 1; i >= 0; i-- {
 		newVar := dirs[i]
-		if newVar==r.root {
+		if newVar == r.root {
 			continue
 		}
 		if files, err := os.ReadDir(newVar); err != nil {
@@ -229,7 +229,9 @@ func (r GitRepo) CleanEmptyDir(path string) (int, error) {
 			}
 			fmt.Println(">>rmdir empty dir", newVar)
 			os.RemoveAll(newVar)
-			n++
+			if s := r.AbsRepo2Repo(newVar); s != "" {
+				n = append(n, s)
+			}
 		}
 	}
 	return n, err
@@ -298,7 +300,8 @@ func (r GitRepo) GitRmFile(realpath RepoPath) (GitResult, error) {
 			return ret, fmt.Errorf("git commit err=%v file=%v:%v", err, realpath, realpath)
 		}
 		ret.Action = GitResultTypeRm
-		r.CleanEmptyDir(r.root)
+		files, _ = r.CleanEmptyDir(r.root)
+		ret.Dirs = files
 		return ret, nil
 	}
 }
@@ -306,6 +309,7 @@ func (r GitRepo) GitRmFile(realpath RepoPath) (GitResult, error) {
 type GitResult struct {
 	Action GitAction
 	Files  []RepoPath
+	Dirs   []RepoPath
 }
 type GitAction string
 
