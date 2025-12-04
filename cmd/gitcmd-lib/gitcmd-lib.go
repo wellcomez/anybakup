@@ -46,7 +46,7 @@ import (
 // C-exportable wrapper for GetFileLog
 //
 //export GetFileLogC
-func GetFileLogC(filePath *C.char, profilename *C.char) *C.GitChangeArray {
+func GetFileLogC(profilename *C.char, filePath *C.char) *C.GitChangeArray {
 	if filePath == nil {
 		return nil
 	}
