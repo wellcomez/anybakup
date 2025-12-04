@@ -219,6 +219,9 @@ func (r GitRepo) CleanEmptyDir(path string) (int, error) {
 		if files, err := os.ReadDir(dirs[i]); err != nil {
 			continue
 		} else if len(files) == 0 {
+			if filepath.Base(dirs[i]) == ".git" {
+				continue
+			}
 			os.RemoveAll(dirs[i])
 			n++
 		}

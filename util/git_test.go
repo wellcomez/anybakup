@@ -935,13 +935,28 @@ func TestCleanEmptyDir(t *testing.T) {
 		if dirPath := filepath.Join(reporoot, "empty", "empty2"); os.MkdirAll(dirPath, 0755) == nil {
 
 		}
-
 		n, err := repo.CleanEmptyDir(dirPath)
 		if n != 2 {
 			t.Fatal("Expected non-zero number of deleted files, got zero", err)
 		}
 	})
-	t.Run("childe not empty", func(t *testing.T) {
+	t.Run("test git", func(t *testing.T) {
+		// 创建一个空目录
+		dirPath := filepath.Join(reporoot, "empty")
+		os.MkdirAll(dirPath, 0755)
+
+		if dirPath := filepath.Join(reporoot, "empty", "empty2"); os.MkdirAll(dirPath, 0755) == nil {
+
+		}
+		if dirPath := filepath.Join(reporoot, "empty", ".git"); os.MkdirAll(dirPath, 0755) == nil {
+
+		}
+		n, err := repo.CleanEmptyDir(dirPath)
+		if n != 1 {
+			t.Fatal("Expected non-zero number of deleted files, got zero", err)
+		}
+	})
+	t.Run("child not empty", func(t *testing.T) {
 		// 创建一个空目录
 		dirPath := filepath.Join(reporoot, "empty")
 		os.MkdirAll(dirPath, 0755)
