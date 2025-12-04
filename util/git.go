@@ -103,10 +103,14 @@ func (conf *GitRepo) CopyToRepo(src SrcPath) (RepoPath, error) {
 	return ret, nil
 }
 
-func (r *GitRepo) load() error {
+func (r *GitRepo) load(c *Config) error {
 	conf := Config{}
-	if err := conf.Load(); err != nil {
-		return fmt.Errorf("git repo %v", err)
+	if c != nil {
+		conf = *c
+	} else {
+		if err := conf.Load(); err != nil {
+			return fmt.Errorf("git repo %v", err)
+		}
 	}
 	st, err := os.Stat(conf.RepoDir.String())
 	if err != nil {
@@ -144,9 +148,9 @@ func (r GitRepo) Src2Repo(s string) RepoPath {
 // 	return b.With(s.Sting())
 // }
 
-func NewGitReop() (*GitRepo, error) {
+func NewGitReop(c *Config) (*GitRepo, error) {
 	ret := &GitRepo{}
-	if err := ret.load(); err != nil {
+	if err := ret.load(c); err != nil {
 		return nil, err
 	}
 	if err := ret.Init(); err != nil {
