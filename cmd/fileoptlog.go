@@ -28,13 +28,8 @@ type sqldb struct {
 	dbfile string
 }
 
-func NewSqldb() (*sqldb, error) {
-	conf := util.Config{}
-	configroot, err := conf.Configdir()
-	if err != nil {
-		return nil, fmt.Errorf("git repo %v", err)
-	}
-	dbPath := filepath.Join(configroot, "file_operations.db") // Default database file path
+func NewSqldb(c *util.Config) (*sqldb, error) {
+	dbPath := filepath.Join(c.RepoDir.String(), "file_operations.db") // Default database file path
 
 	// Create directory if it doesn't exist
 	dir := filepath.Dir(dbPath)
@@ -79,7 +74,7 @@ func (s *sqldb) Close() error {
 	return s.db.Close()
 }
 
-func BakupOptAdd(srcFile string, destFile util.RepoPath, isFile bool, sub bool,g GitCmd) error {
+func BakupOptAdd(srcFile string, destFile util.RepoPath, isFile bool, sub bool, g GitCmd) error {
 	revcount := 0
 	if isFile {
 		if count, err := g.GetFileLog(srcFile); err != nil {
@@ -90,7 +85,7 @@ func BakupOptAdd(srcFile string, destFile util.RepoPath, isFile bool, sub bool,g
 	} else {
 		revcount = 1
 	}
-	db, err := NewSqldb()
+	db, err := NewSqldb(g.C)
 	if err != nil {
 		return err
 	}
@@ -133,8 +128,8 @@ func BakupOptAdd(srcFile string, destFile util.RepoPath, isFile bool, sub bool,g
 	return nil
 }
 
-func BakupOptRm(file util.RepoPath) error {
-	db, err := NewSqldb()
+func BakupOptRm(file util.RepoPath, c *util.Config) error {
+	db, err := NewSqldb(c)
 	if err != nil {
 		return err
 	}
@@ -163,8 +158,8 @@ func BakupOptRm(file util.RepoPath) error {
 	return nil
 }
 
-func GetAllOpt() ([]FileOperation, error) {
-	db, err := NewSqldb()
+func GetAllOpt(c *util.Config) ([]FileOperation, error) {
+	db, err := NewSqldb(c)
 	if err != nil {
 		return nil, err
 	}

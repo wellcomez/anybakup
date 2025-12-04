@@ -12,6 +12,15 @@ type GitCmd struct {
 	C *util.Config
 }
 
+func NewGitCmd(profilname string) *GitCmd {
+	if profilname == "" {
+		return &GitCmd{
+			C: nil,
+		}
+	}
+	return &GitCmd{}
+}
+
 // GetFileLog returns the git log for a specific file
 func (g GitCmd) GetFileLog(filePath string) ([]util.GitChanges, error) {
 	absFilePath, err := filepath.Abs(filePath)
@@ -77,12 +86,12 @@ func (g GitCmd) AddFile(arg string) (ret Result_git_add) {
 			ret.Err = err
 			return
 		}
-		if err := BakupOptAdd(file, ret.Dest, isfile, false,g); err != nil {
+		if err := BakupOptAdd(file, ret.Dest, isfile, false, g); err != nil {
 			fmt.Printf("failed to add sql backup record %v", err)
 		}
 		if !isfile {
 			for _, f := range yes.Files {
-				if err := BakupOptAdd(fmt.Sprintf("/%v", f), f, true, true,g); err != nil {
+				if err := BakupOptAdd(fmt.Sprintf("/%v", f), f, true, true, g); err != nil {
 					fmt.Printf("failed to add sql backup record %v", err)
 				} else {
 					fmt.Printf(">>> added to sql %v\n", f)
@@ -124,11 +133,11 @@ func (g GitCmd) RmFile(gitPath util.RepoPath) error {
 		default:
 			return fmt.Errorf("rm unexpected result %v", yes)
 		}
-		if err := BakupOptRm(gitPath); err != nil {
+		if err := BakupOptRm(gitPath,g.C); err != nil {
 			fmt.Println(err)
 		}
 		for _, v := range yes.Files {
-			if err := BakupOptRm(v); err != nil {
+			if err := BakupOptRm(v,g.C); err != nil {
 				fmt.Println(err)
 			}
 		}

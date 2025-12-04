@@ -249,11 +249,11 @@ func TestGitRmDir(t *testing.T) {
 	if len(rmret.Files) != 2 {
 		t.Errorf("Expected 2 file, got %v", len(rmret.Files))
 	}
-	if err := cmd.BakupOptRm(repodir); err != nil {
+	if err := cmd.BakupOptRm(repodir,g.C); err != nil {
 		t.Errorf("Expected GitResultRm, got %v", rmret)
 	}
 	for _, v := range rmret.Files {
-		if err := cmd.BakupOptRm(v); err != nil {
+		if err := cmd.BakupOptRm(v,g.C); err != nil {
 			t.Errorf("Expected GitResultRm, got %v", rmret)
 		}
 	}
