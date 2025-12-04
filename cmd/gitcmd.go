@@ -8,13 +8,17 @@ import (
 	"anybakup/util"
 )
 
+type GitCmd struct {
+	C *util.Config
+}
+
 // GetFileLog returns the git log for a specific file
-func GetFileLog(filePath string) ([]util.GitChanges, error) {
+func (g GitCmd) GetFileLog(filePath string) ([]util.GitChanges, error) {
 	absFilePath, err := filepath.Abs(filePath)
 	if err != nil {
 		return nil, err
 	}
-	repo, err := util.NewGitReop()
+	repo, err := util.NewGitReop(g.C)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +36,7 @@ type Result_git_add struct {
 }
 
 // AddFile adds a file to the git repository
-func AddFile(arg string) (ret Result_git_add) {
+func (g GitCmd) AddFile(arg string) (ret Result_git_add) {
 	file, err := filepath.Abs(arg)
 	if err != nil {
 		ret.Err = err
@@ -43,7 +47,7 @@ func AddFile(arg string) (ret Result_git_add) {
 		Err:    nil,
 		Result: util.GitResultTypeError,
 	}
-	repo, err := util.NewGitReop()
+	repo, err := util.NewGitReop(g.C)
 	if err != nil {
 		ret.Err = err
 		return
@@ -64,7 +68,7 @@ func AddFile(arg string) (ret Result_git_add) {
 		case util.GitResultTypeNochange:
 			ret.Dest = dest
 		default:
-			ret.Err = fmt.Errorf("add  unexpected result %v", yes)
+			ret.Err = fmt.Errorf("add unexpected result %v", yes)
 			return
 		}
 		isfile, err := IsFile(file)
@@ -73,12 +77,12 @@ func AddFile(arg string) (ret Result_git_add) {
 			ret.Err = err
 			return
 		}
-		if err := BakupOptAdd(file, ret.Dest, isfile, false); err != nil {
+		if err := BakupOptAdd(file, ret.Dest, isfile, false,g); err != nil {
 			fmt.Printf("failed to add sql backup record %v", err)
 		}
 		if !isfile {
 			for _, f := range yes.Files {
-				if err := BakupOptAdd(fmt.Sprintf("/%v", f), f, true, true); err != nil {
+				if err := BakupOptAdd(fmt.Sprintf("/%v", f), f, true, true,g); err != nil {
 					fmt.Printf("failed to add sql backup record %v", err)
 				} else {
 					fmt.Printf(">>> added to sql %v\n", f)
@@ -89,20 +93,23 @@ func AddFile(arg string) (ret Result_git_add) {
 	return
 }
 
-func RmFileAbs(arg string) error {
+// RmFileAbs removes a file from the git repository using an absolute path
+func (g GitCmd) RmFileAbs(arg string) error {
 	file, err := filepath.Abs(arg)
 	if err != nil {
 		return err
 	}
-	repo, err := util.NewGitReop()
+	repo, err := util.NewGitReop(g.C)
 	if err != nil {
 		return err
 	}
 	gitPath := repo.Src2Repo(file)
-	return RmFile(gitPath)
+	return g.RmFile(gitPath)
 }
-func RmFile(gitPath util.RepoPath) error {
-	repo, err := util.NewGitReop()
+
+// RmFile removes a file from the git repository using a repository path
+func (g GitCmd) RmFile(gitPath util.RepoPath) error {
+	repo, err := util.NewGitReop(g.C)
 	if err != nil {
 		return err
 	}
@@ -115,7 +122,7 @@ func RmFile(gitPath util.RepoPath) error {
 		case util.GitResultTypeNochange:
 			break
 		default:
-			return fmt.Errorf("rm unexpected  result %v", yes)
+			return fmt.Errorf("rm unexpected result %v", yes)
 		}
 		if err := BakupOptRm(gitPath); err != nil {
 			fmt.Println(err)
@@ -138,13 +145,13 @@ func IsFile(file string) (bool, error) {
 }
 
 // GetFile retrieves a file from a specific commit
-func GetFile(filePath string, commit string, target string) error {
+func (g GitCmd) GetFile(filePath string, commit string, target string) error {
 	var err error
 	absFilePath, err := filepath.Abs(filePath)
 	if err != nil {
 		return err
 	}
-	repo, err := util.NewGitReop()
+	repo, err := util.NewGitReop(g.C)
 	if err != nil {
 		return err
 	}

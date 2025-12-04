@@ -11,14 +11,14 @@ import (
 )
 
 // setupTestEnv creates a temporary test environment with config and git repo
-func setupTestEnv(t *testing.T) (repoDir string, cleanup func()) {
+func setupTestEnv(t *testing.T) (ret cmd.GitCmd, cleanup func()) {
 	// Create temporary directories
 	tmpDir, err := os.MkdirTemp("", "anybakup-cmd-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 
-	repoDir = filepath.Join(tmpDir, "repo")
+	repoDir := filepath.Join(tmpDir, "repo")
 	if err := os.MkdirAll(repoDir, 0755); err != nil {
 		t.Fatalf("Failed to create repo dir: %v", err)
 	}
@@ -43,14 +43,15 @@ func setupTestEnv(t *testing.T) (repoDir string, cleanup func()) {
 		os.Setenv("HOME", oldHome)
 		os.RemoveAll(tmpDir)
 	}
-
-	return repoDir, cleanup
+	re := cmd.GitCmd{C: &util.Config{RepoDir: util.RepoRoot(repoDir)}}
+	return re, cleanup
 }
 func TestGitAddFile(t *testing.T) {
-	repo, clean := setupTestEnv(t)
+	g, clean := setupTestEnv(t)
 	defer clean()
+	repo := g.C.RepoDir
 	fmt.Printf("t: %v\n", repo)
-	r, err := util.NewGitReop()
+	r, err := util.NewGitReop(g.C)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
@@ -86,7 +87,7 @@ func TestGitAddFile(t *testing.T) {
 	}
 
 	for _, v := range ret.Files {
-		if err := cmd.BakupOptAdd(testFile, v, false, false); err != nil {
+		if err := cmd.BakupOptAdd(testFile, v, false, false, g); err != nil {
 			t.Errorf("Expected GitResultAdd, got %v", err)
 		}
 	}
@@ -104,17 +105,18 @@ func TestGitAddFile(t *testing.T) {
 	}
 
 	for _, v := range ret.Files {
-		if err := cmd.BakupOptAdd(testFile, v, false, false); err != nil {
+		if err := cmd.BakupOptAdd(testFile, v, false, false, g); err != nil {
 			t.Errorf("Expected GitResultAdd, got %v", err)
 		}
 	}
 }
 
 func TestGitAddDir(t *testing.T) {
-	repo, clean := setupTestEnv(t)
+	g, clean := setupTestEnv(t)
+	repo := g.C.RepoDir
 	defer clean()
 	fmt.Printf("t: %v\n", repo)
-	r, err := util.NewGitReop()
+	r, err := util.NewGitReop(g.C)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
@@ -156,11 +158,11 @@ func TestGitAddDir(t *testing.T) {
 	if ret.Action != util.GitResultTypeAdd {
 		t.Errorf("Expected GitResultAdd, got %v", ret)
 	}
-	if err := cmd.BakupOptAdd(dir1, repodir, false, false); err != nil {
+	if err := cmd.BakupOptAdd(dir1, repodir, false, false, g); err != nil {
 		t.Errorf("Expected GitResultAdd, got %v", ret)
 	}
 	for _, v := range ret.Files {
-		if err := cmd.BakupOptAdd(fmt.Sprintf("/%v", v), v, true, true); err != nil {
+		if err := cmd.BakupOptAdd(fmt.Sprintf("/%v", v), v, true, true, g); err != nil {
 			t.Errorf("Expected GitResultAdd, got %v", ret)
 		}
 	}
@@ -203,20 +205,21 @@ func TestGitAddDir(t *testing.T) {
 		t.Errorf("Expected GitResultAdd, got %v", ret)
 	}
 
-	if err := cmd.BakupOptAdd(dir1, repodir, false, false); err != nil {
+	if err := cmd.BakupOptAdd(dir1, repodir, false, false, g); err != nil {
 		t.Errorf("Expected GitResultAdd, got %v", ret)
 	}
 	for _, v := range ret.Files {
-		if err := cmd.BakupOptAdd(fmt.Sprintf("/%v", v), v, true, true); err != nil {
+		if err := cmd.BakupOptAdd(fmt.Sprintf("/%v", v), v, true, true, g); err != nil {
 			t.Errorf("Expected GitResultAdd, got %v", ret)
 		}
 	}
 }
 func TestGitRmDir(t *testing.T) {
-	repo, clean := setupTestEnv(t)
+	g, clean := setupTestEnv(t)
+	repo := g.C.RepoDir
 	defer clean()
 	fmt.Printf("t: %v\n", repo)
-	r, err := util.NewGitReop()
+	r, err := util.NewGitReop(g.C)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
@@ -232,9 +235,9 @@ func TestGitRmDir(t *testing.T) {
 	}
 
 	// Add the file (using relative path from repo root)
-	repodir := setupAddDir(t, dir1, r, "aaa")
+	repodir := setupAddDir(t, dir1, g, r, "aaa")
 	///change file content
-	setupAddDir(t, dir1, r, "bbb")
+	setupAddDir(t, dir1, g, r, "bbb")
 
 	rmret, err := r.GitRmFile(repodir)
 	if err != nil {
@@ -256,7 +259,7 @@ func TestGitRmDir(t *testing.T) {
 	}
 }
 
-func setupAddDir(t *testing.T, dir1 string, r *util.GitRepo, content string) util.RepoPath {
+func setupAddDir(t *testing.T, dir1 string, g cmd.GitCmd, r *util.GitRepo, content string) util.RepoPath {
 	testFile := filepath.Join(dir1, "test.txt")
 	if err := os.WriteFile(testFile, []byte(content), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
@@ -279,11 +282,11 @@ func setupAddDir(t *testing.T, dir1 string, r *util.GitRepo, content string) uti
 	if ret.Action != util.GitResultTypeAdd {
 		t.Errorf("Expected GitResultAdd, got %v", ret)
 	}
-	if err := cmd.BakupOptAdd(dir1, repodir, false, false); err != nil {
+	if err := cmd.BakupOptAdd(dir1, repodir, false, false, g); err != nil {
 		t.Errorf("Expected GitResultAdd, got %v", ret)
 	}
 	for _, v := range ret.Files {
-		if err := cmd.BakupOptAdd(fmt.Sprintf("/%v", v), v, true, true); err != nil {
+		if err := cmd.BakupOptAdd(fmt.Sprintf("/%v", v), v, true, true, g); err != nil {
 			t.Errorf("Expected GitResultAdd, got %v", ret)
 		}
 	}

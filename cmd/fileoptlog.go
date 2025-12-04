@@ -79,10 +79,10 @@ func (s *sqldb) Close() error {
 	return s.db.Close()
 }
 
-func BakupOptAdd(srcFile string, destFile util.RepoPath, isFile bool, sub bool) error {
+func BakupOptAdd(srcFile string, destFile util.RepoPath, isFile bool, sub bool,g GitCmd) error {
 	revcount := 0
 	if isFile {
-		if count, err := GetFileLog(srcFile); err != nil {
+		if count, err := g.GetFileLog(srcFile); err != nil {
 			return err
 		} else {
 			revcount = len(count)

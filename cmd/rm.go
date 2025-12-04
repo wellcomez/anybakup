@@ -14,8 +14,8 @@ var rmCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		filePath := args[0]
-
-		err := RmFileAbs(filePath)
+		g:=GitCmd{}
+		err := g.RmFileAbs(filePath)
 		if err != nil {
 			fmt.Println(err)
 		} else {
