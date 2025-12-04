@@ -8,8 +8,13 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
-type Config struct {
+type Profile struct {
 	RepoDir RepoRoot `yaml:"repodir"`
+}
+type Config struct {
+	RepoDir RepoRoot           `yaml:"repodir"`
+	Profile map[string]Profile `yaml:"profile"`
+	Default Profile            `yaml:"default"`
 }
 
 func (r RepoRoot) String() string {
@@ -19,8 +24,24 @@ func (r RepoRoot) With(s string) string {
 	ret := fmt.Sprintf("%s/%s", r.String(), s)
 	return ret
 }
-func (c *Config) String() string {
-	return ""
+func NewConfig() *Config {
+	ret := Config{}
+	ret.Load()
+	return &ret
+}
+func (c *Config) SetProfile(name string, p Profile)error {
+	if name == "" {
+		c.Default = p
+	} else {
+		c.Profile[name] = p
+	}
+	return c.Save()
+}
+func (c *Config) GetProfile(name string) *Config {
+	if p, ok := c.Profile[name]; ok {
+		return &Config{RepoDir: p.RepoDir}
+	}
+	return nil
 }
 func (c *Config) Load() error {
 	configFilePath, err := c.configfile()
@@ -56,6 +77,7 @@ func (Config) Configdir() (string, error) {
 	return configDir, nil
 }
 func (c *Config) Save() error {
+	c.Default.RepoDir = c.RepoDir
 	configFilePath, err := c.configfile()
 	if err != nil {
 		return fmt.Errorf("error getting config file path: %v", err)

@@ -13,12 +13,15 @@ type GitCmd struct {
 }
 
 func NewGitCmd(profilname string) *GitCmd {
-	if profilname == "" {
+	c := util.Config{}
+	c.Load()
+	if config := c.GetProfile(profilname); config != nil {
 		return &GitCmd{
-			C: nil,
+			C: config,
 		}
+	} else {
+		return &GitCmd{C: &c}
 	}
-	return &GitCmd{}
 }
 
 // GetFileLog returns the git log for a specific file
@@ -133,11 +136,11 @@ func (g GitCmd) RmFile(gitPath util.RepoPath) error {
 		default:
 			return fmt.Errorf("rm unexpected result %v", yes)
 		}
-		if err := BakupOptRm(gitPath,g.C); err != nil {
+		if err := BakupOptRm(gitPath, g.C); err != nil {
 			fmt.Println(err)
 		}
 		for _, v := range yes.Files {
-			if err := BakupOptRm(v,g.C); err != nil {
+			if err := BakupOptRm(v, g.C); err != nil {
 				fmt.Println(err)
 			}
 		}

@@ -17,7 +17,7 @@ var addCmd = &cobra.Command{
 	Long:  `Add a file to the repository. This copies the file to the configured repository directory.`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		g := GitCmd{}
+		g := NewGitCmd("")
 		if ret := g.AddFile(args[0]); ret.Err != nil {
 			fmt.Printf("Error add file %v: [%v]\n", args[0], ret.Err)
 			os.Exit(1)
@@ -28,7 +28,7 @@ var addCmd = &cobra.Command{
 }
 
 func run_list_file(filePath string, print bool) []util.GitChanges {
-	g := GitCmd{}
+	g := NewGitCmd("")
 	if logs, err := g.GetFileLog(filePath); err != nil {
 		fmt.Printf("Error log file %v: [%v]\n", filePath, err)
 		return []util.GitChanges{}
@@ -61,7 +61,7 @@ var getCmd = &cobra.Command{
 		filePath := args[0]
 		target := ""
 		commit := ""
-		g := GitCmd{}
+		g := NewGitCmd("")
 		if len(args) == 3 {
 			target = args[1]
 			commit = args[2]

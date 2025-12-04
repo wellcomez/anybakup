@@ -30,10 +30,11 @@ var initCmd = &cobra.Command{
 		}
 		fmt.Printf("Initialized empty repository in %s\n", absPath)
 
-		c := util.Config{
+		p := util.Profile{
 			RepoDir: util.RepoRoot(absPath),
 		}
-		if err := c.Save(); err != nil {
+		c := util.NewConfig()
+		if err := c.SetProfile("", p); err != nil {
 			fmt.Printf("Error saving config: %v\n", err)
 			os.Exit(1)
 		}
