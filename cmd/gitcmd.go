@@ -109,11 +109,16 @@ func RmFile(arg string) error {
 		default:
 			return fmt.Errorf("rm unexpected  result %v", yes)
 		}
+		if err := BakupOptRm(file); err != nil {
+			fmt.Println(err)
+		}
+		for _, v := range yes.Files {
+			if err := BakupOptRm(v); err != nil {
+				fmt.Println(err)
+			}
+		}
+		return nil
 	}
-	if err := BakupOptRm(file); err != nil {
-		fmt.Println(err)
-	}
-	return nil
 }
 
 func IsFile(file string) (bool, error) {

@@ -80,6 +80,27 @@ func TestGitRmFile(t *testing.T) {
 	repoDir, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
+	r, newVar := setupAddFile(t, repoDir)
+	if ret, err := r.GitRmFile(newVar); err != nil {
+		t.Fatalf("GitRmFile failed: %v", err)
+	} else if ret.Action != GitResultTypeRm {
+		t.Errorf("Expected GitResultRm, got %v", ret)
+	}else if len(ret.Files)!=1 {
+		t.Errorf("Expected 1 file, got %v", ret)
+	}
+
+
+	if ret, err := r.GitRmFile(newVar); err != nil {
+		t.Fatalf("GitRmFile failed: %v", err)
+	} else if ret.Action != GitResultTypeNochange {
+		t.Errorf("Expected GitResultRm, got %v", ret)
+	}else if len(ret.Files)!=0 {
+		t.Errorf("Expected 1 file, got %v", ret)
+	}
+
+}
+
+func setupAddFile(t *testing.T, repoDir string) (*GitRepo, RepoPath) {
 	r, err := NewGitReop()
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
@@ -128,17 +149,7 @@ func TestGitRmFile(t *testing.T) {
 	if commit.Author.Name != "anybakup" {
 		t.Errorf("Expected author 'anybakup', got %q", commit.Author.Name)
 	}
-	if ret, err := r.GitRmFile(newVar); err != nil {
-		t.Fatalf("GitRmFile failed: %v", err)
-	} else if ret.Action != GitResultTypeRm {
-		t.Errorf("Expected GitResultRm, got %v", ret)
-	}
-	if ret, err := r.GitRmFile(newVar); err != nil {
-		t.Fatalf("GitRmFile failed: %v", err)
-	} else if ret.Action != GitResultTypeNochange {
-		t.Errorf("Expected GitResultRm, got %v", ret)
-	}
-
+	return r, newVar
 }
 func TestGitAddDir(t *testing.T) {
 	repoDir, cleanup := setupGitTestEnv(t)
