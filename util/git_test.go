@@ -972,6 +972,51 @@ func TestCleanEmptyDir(t *testing.T) {
 			t.Fatal("Expected non-zero number of deleted files, got zero", err)
 		}
 	})
+
+	t.Run("cascading empty directories", func(t *testing.T) {
+		// Create a nested empty directory structure: parent/child/grandchild
+		parentDir := filepath.Join(reporoot, "parent")
+		childDir := filepath.Join(parentDir, "child")
+		grandchildDir := filepath.Join(childDir, "grandchild")
+
+		// Create the nested empty directories
+		if err := os.MkdirAll(grandchildDir, 0755); err != nil {
+			t.Fatal(err)
+		}
+
+		// Verify all directories exist before cleaning
+		if _, err := os.Stat(parentDir); err != nil {
+			t.Fatal("Parent directory should exist before cleaning")
+		}
+		if _, err := os.Stat(childDir); err != nil {
+			t.Fatal("Child directory should exist before cleaning")
+		}
+		if _, err := os.Stat(grandchildDir); err != nil {
+			t.Fatal("Grandchild directory should exist before cleaning")
+		}
+
+		// Run CleanEmptyDir - this should delete grandchild, child, and parent (all are empty)
+		n, err := repo.CleanEmptyDir(parentDir)
+		if err != nil {
+			t.Fatalf("CleanEmptyDir failed: %v", err)
+		}
+
+		// Should have deleted 3 directories: parent, child, and grandchild
+		if n != 3 {
+			t.Fatalf("Expected 3 deleted directories, got %d", n)
+		}
+
+		// Verify all nested directories have been deleted
+		if _, err := os.Stat(parentDir); !os.IsNotExist(err) {
+			t.Fatal("Parent directory should have been deleted")
+		}
+		if _, err := os.Stat(childDir); !os.IsNotExist(err) {
+			t.Fatal("Child directory should have been deleted")
+		}
+		if _, err := os.Stat(grandchildDir); !os.IsNotExist(err) {
+			t.Fatal("Grandchild directory should have been deleted")
+		}
+	})
 	// t.Run("File path", func(t *testing.T) {
 	// 	// 创建一个文件
 	// 	filePath := filepath.Join(reporoot, "file.txt")
