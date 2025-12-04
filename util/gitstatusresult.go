@@ -15,7 +15,7 @@ type GitStatusResult struct {
 
 func (s GitStatusResult) print(preifx string) {
 	fmt.Printf("%-10s status to string: %v", preifx, s.Status.String())
-	fmt.Printf("%-10s add %-50s s:%v w:%v\n", preifx, s.Path, s.Staging, s.Worktree)
+	fmt.Printf("%-10s %-50s s:%v w:%v\n", preifx, s.Path, s.Staging, s.Worktree)
 }
 
 func (s GitStatusResult) NeedGitCommitFiles(states []git.StatusCode) (ret []RepoPath) {

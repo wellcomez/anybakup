@@ -198,16 +198,16 @@ func isDir(path string) bool {
 }
 
 func (r GitRepo) GitRmFile(realpath RepoPath) (GitResult, error) {
-	add := GitResult{
+	ret := GitResult{
 		Action: GitResultTypeError,
 	}
 	repo, err := r.Open()
 	if err != nil {
-		return add, fmt.Errorf("git rm err=%v file=%v", err, realpath)
+		return ret, fmt.Errorf("git rm err=%v file=%v", err, realpath)
 	}
 	w, err := repo.Worktree()
 	if err != nil {
-		return add, fmt.Errorf("git rm err=%v file=%v", err, realpath)
+		return ret, fmt.Errorf("git rm err=%v file=%v", err, realpath)
 	}
 
 	abspath := realpath.ToAbs(r)
@@ -222,39 +222,39 @@ func (r GitRepo) GitRmFile(realpath RepoPath) (GitResult, error) {
 	// gitfile := real_path.Sting()
 	state, err := r.Status(realpath)
 	if err != nil {
-		return add, fmt.Errorf("git rm err=%v file=%v", err, realpath)
+		return ret, fmt.Errorf("git rm err=%v file=%v", err, realpath)
 	}
-	state.print("before")
-	add.Files = state.NeedGitRMFiles(true)
-	if len(add.Files) == 0 {
-		add.Action = GitResultTypeNochange
-		return add, nil
+	state.print("before rm")
+	ret.Files = state.NeedGitRMFiles(true)
+	if len(ret.Files) == 0 {
+		ret.Action = GitResultTypeNochange
+		return ret, nil
 	}
 	if isdir {
-		for _, f := range add.Files {
+		for _, f := range ret.Files {
 			_, err = w.Remove(f.Sting())
 			if err != nil {
-				return add, fmt.Errorf("git rm err=%v file=%v:%v", err, realpath, f)
+				return ret, fmt.Errorf("git rm err=%v file=%v:%v", err, realpath, f)
 			}
 		}
 	} else {
 		_, err = w.Remove(string(realpath))
 	}
 	if err != nil {
-		return add, fmt.Errorf("git rm err=%v file=%v", err, realpath)
+		return ret, fmt.Errorf("git rm err=%v file=%v", err, realpath)
 	}
 
 	afterState, err := r.Status(realpath)
 	if err != nil {
-		return add, fmt.Errorf("git rm err=%v file=%v", err, realpath)
+		return ret, fmt.Errorf("git rm err=%v file=%v", err, realpath)
 	}
-	afterState.print("after")
+	afterState.print("after rm")
 	deleteOption := []git.StatusCode{git.Deleted}
 	files := afterState.NeedGitCommitFiles(deleteOption)
 
 	if len(files) == 0 {
-		add.Action = GitResultTypeNochange
-		return add, nil
+		ret.Action = GitResultTypeNochange
+		return ret, nil
 	} else {
 		msg := fmt.Sprintf("RM %v", realpath)
 		_, err = w.Commit(msg, &git.CommitOptions{
@@ -264,10 +264,10 @@ func (r GitRepo) GitRmFile(realpath RepoPath) (GitResult, error) {
 			},
 		})
 		if err != nil {
-			return add, fmt.Errorf("git commit err=%v file=%v:%v", err, realpath, realpath)
+			return ret, fmt.Errorf("git commit err=%v file=%v:%v", err, realpath, realpath)
 		}
-		add.Action = GitResultTypeRm
-		return add, nil
+		ret.Action = GitResultTypeRm
+		return ret, nil
 	}
 }
 
@@ -303,7 +303,7 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 	if err != nil {
 		return ret, fmt.Errorf("git add %v", err)
 	}
-	state.print("before")
+	state.print("before add")
 	for _, v := range state.NeedGitAddFiles() {
 		fmt.Printf(">>>>>find need to change %v\n", v)
 	}
@@ -321,7 +321,7 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 	if err != nil {
 		return ret, fmt.Errorf("git add %v", err)
 	}
-	state.print("after")
+	state.print("after add")
 	action := state.NeedGitCommit()
 	fmt.Printf("action %s\n", action)
 	if action == "" {

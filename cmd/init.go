@@ -39,7 +39,7 @@ var initCmd = &cobra.Command{
 			os.Exit(1)
 		}
 		// Initialize git repository
-		if _, err := util.NewGitReop(nil); err != nil {
+		if _, err := util.NewGitReop(c); err != nil {
 			fmt.Printf("Error initializing git repository: %v\n", err)
 			os.Exit(1)
 		}

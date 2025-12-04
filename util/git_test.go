@@ -80,8 +80,8 @@ func TestGitRmFile(t *testing.T) {
 	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	r, newVar := setupAddFile(t, repoDir, c)
-	if ret, err := r.GitRmFile(newVar); err != nil {
+	r, gitpath := setupAddFile(t, repoDir, c)
+	if ret, err := r.GitRmFile(gitpath); err != nil {
 		t.Fatalf("GitRmFile failed: %v", err)
 	} else if ret.Action != GitResultTypeRm {
 		t.Errorf("Expected GitResultRm, got %v", ret)
@@ -89,7 +89,7 @@ func TestGitRmFile(t *testing.T) {
 		t.Errorf("Expected 1 file, got %v", ret)
 	}
 
-	if ret, err := r.GitRmFile(newVar); err != nil {
+	if ret, err := r.GitRmFile(gitpath); err != nil {
 		t.Fatalf("GitRmFile failed: %v", err)
 	} else if ret.Action != GitResultTypeNochange {
 		t.Errorf("Expected GitResultRm, got %v", ret)

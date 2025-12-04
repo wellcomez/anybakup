@@ -137,11 +137,11 @@ func (g GitCmd) RmFile(gitPath util.RepoPath) error {
 			return fmt.Errorf("rm unexpected result %v", yes)
 		}
 		if err := BakupOptRm(gitPath, g.C); err != nil {
-			fmt.Println(err)
+			fmt.Println(err,gitPath)
 		}
 		for _, v := range yes.Files {
 			if err := BakupOptRm(v, g.C); err != nil {
-				fmt.Println(err)
+				fmt.Println(err,v)
 			}
 		}
 		return nil
