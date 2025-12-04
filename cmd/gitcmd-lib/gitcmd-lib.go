@@ -135,19 +135,19 @@ func GetFileLogC(filePath *C.char) *C.GitChangeArray {
 // C-exportable wrapper for BackupOptRm
 //
 //export BackupOptRmC
-func BackupOptRmC(file *C.char) C.int {
-	if file == nil {
-		return -1
-	}
+// func BackupOptRmC(file *C.char) C.int {
+// 	if file == nil {
+// 		return -1
+// 	}
 
-	goFile := C.GoString(file)
-	err := cmd.BakupOptRm(goFile)
-	if err != nil {
-		return -2
-	}
+// 	goFile := C.GoString(file)
+// 	err := cmd.BakupOptRm(goFile)
+// 	if err != nil {
+// 		return -2
+// 	}
 
-	return 0
-}
+// 	return 0
+// }
 
 // C-exportable wrapper for GetAllOpt
 //

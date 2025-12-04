@@ -26,7 +26,7 @@ func GetFileLog(filePath string) ([]util.GitChanges, error) {
 }
 
 type Result_git_add struct {
-	Dest   string
+	Dest   util.RepoPath
 	Err    error
 	Result util.GitAction
 }
@@ -60,9 +60,9 @@ func AddFile(arg string) (ret Result_git_add) {
 		fmt.Printf(">>> result %v\n", ret.Result)
 		switch yes.Action {
 		case util.GitResultTypeAdd:
-			ret.Dest = dest.Sting()
+			ret.Dest = dest
 		case util.GitResultTypeNochange:
-			ret.Dest = dest.Sting()
+			ret.Dest = dest
 		default:
 			ret.Err = fmt.Errorf("add  unexpected result %v", yes)
 			return
@@ -98,7 +98,8 @@ func RmFile(arg string) error {
 	if err != nil {
 		return err
 	}
-	if yes, err := repo.GitRmFile(repo.Src2Repo(file)); err != nil {
+	gitPath := repo.Src2Repo(file)
+	if yes, err := repo.GitRmFile(gitPath); err != nil {
 		return err
 	} else {
 		switch yes.Action {
@@ -109,7 +110,7 @@ func RmFile(arg string) error {
 		default:
 			return fmt.Errorf("rm unexpected  result %v", yes)
 		}
-		if err := BakupOptRm(file); err != nil {
+		if err := BakupOptRm(gitPath); err != nil {
 			fmt.Println(err)
 		}
 		for _, v := range yes.Files {

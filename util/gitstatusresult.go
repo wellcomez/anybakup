@@ -18,11 +18,11 @@ func (s GitStatusResult) print(preifx string) {
 	fmt.Printf("%-10s add %-50s s:%v w:%v\n", preifx, s.Path, s.Staging, s.Worktree)
 }
 
-func (s GitStatusResult) NeedGitCommitFiles(states []git.StatusCode) (ret []string) {
+func (s GitStatusResult) NeedGitCommitFiles(states []git.StatusCode) (ret []RepoPath) {
 	for k, v := range s.Status {
 		status := v.Staging
 		if slices.Contains(states, status) {
-			ret = append(ret, k)
+			ret = append(ret, RepoPath(k))
 		}
 	}
 	return
@@ -47,14 +47,14 @@ func (s GitStatusResult) NeedGitCommit() string {
 	return ""
 }
 
-func (s GitStatusResult) NeedGitRMFiles(work bool) (ret []string) {
+func (s GitStatusResult) NeedGitRMFiles(work bool) (ret []RepoPath) {
 	for k, v := range s.Status {
 		status := v.Worktree
 		if !work {
 			status = v.Staging
 		}
 		if status == git.Deleted {
-			ret = append(ret, k)
+			ret = append(ret, RepoPath(k))
 		}
 	}
 	return ret

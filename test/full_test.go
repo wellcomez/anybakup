@@ -153,7 +153,7 @@ func TestGitAddDir(t *testing.T) {
 	if ret.Action != util.GitResultTypeAdd {
 		t.Errorf("Expected GitResultAdd, got %v", ret)
 	}
-	if err := cmd.BakupOptAdd(dir1, repodir.Sting(), false, false); err != nil {
+	if err := cmd.BakupOptAdd(dir1, repodir, false, false); err != nil {
 		t.Errorf("Expected GitResultAdd, got %v", ret)
 	}
 	for _, v := range ret.Files {
@@ -200,7 +200,7 @@ func TestGitAddDir(t *testing.T) {
 		t.Errorf("Expected GitResultAdd, got %v", ret)
 	}
 
-	if err := cmd.BakupOptAdd(dir1, repodir.Sting(), false, false); err != nil {
+	if err := cmd.BakupOptAdd(dir1, repodir, false, false); err != nil {
 		t.Errorf("Expected GitResultAdd, got %v", ret)
 	}
 	for _, v := range ret.Files {
@@ -243,11 +243,11 @@ func TestGitRmDir(t *testing.T) {
 	if len(rmret.Files) != 2 {
 		t.Errorf("Expected 2 file, got %v", len(rmret.Files))
 	}
-	if err := cmd.BakupOptRm(dir1); err != nil {
+	if err := cmd.BakupOptRm(repodir); err != nil {
 		t.Errorf("Expected GitResultRm, got %v", rmret)
 	}
 	for _, v := range rmret.Files {
-		if err := cmd.BakupOptRm(fmt.Sprintf("/%v", v)); err != nil {
+		if err := cmd.BakupOptRm(v); err != nil {
 			t.Errorf("Expected GitResultRm, got %v", rmret)
 		}
 	}
@@ -276,7 +276,7 @@ func setupAddDir(t *testing.T, dir1 string, r *util.GitRepo, content string) uti
 	if ret.Action != util.GitResultTypeAdd {
 		t.Errorf("Expected GitResultAdd, got %v", ret)
 	}
-	if err := cmd.BakupOptAdd(dir1, repodir.Sting(), false, false); err != nil {
+	if err := cmd.BakupOptAdd(dir1, repodir, false, false); err != nil {
 		t.Errorf("Expected GitResultAdd, got %v", ret)
 	}
 	for _, v := range ret.Files {

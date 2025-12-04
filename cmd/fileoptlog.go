@@ -79,7 +79,7 @@ func (s *sqldb) Close() error {
 	return s.db.Close()
 }
 
-func BakupOptAdd(srcFile, destFile string, isFile bool, sub bool) error {
+func BakupOptAdd(srcFile string, destFile util.RepoPath, isFile bool, sub bool) error {
 	revcount := 0
 	if isFile {
 		if count, err := GetFileLog(srcFile); err != nil {
@@ -133,7 +133,7 @@ func BakupOptAdd(srcFile, destFile string, isFile bool, sub bool) error {
 	return nil
 }
 
-func BakupOptRm(file string) error {
+func BakupOptRm(file util.RepoPath) error {
 	db, err := NewSqldb()
 	if err != nil {
 		fmt.Printf("SQL Deleted file operation for 1 %s\n", file)
@@ -142,9 +142,9 @@ func BakupOptRm(file string) error {
 	defer db.Close()
 
 	// Remove entries where either srcfile or destfile matches the given file
-	query := `DELETE FROM file_operations WHERE srcfile = ? OR destfile = ?`
+	query := `DELETE FROM file_operations WHERE  destfile = ?`
 
-	_, err = db.db.Exec(query, file, file)
+	_, err = db.db.Exec(query, file)
 	// r.RowsAffected()
 	if err != nil {
 		fmt.Printf("SQL Deleted file operation for 2 %s\n", file)

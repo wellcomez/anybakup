@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
 	"time"
 
 	"github.com/go-git/go-git/v6"
@@ -185,6 +184,7 @@ func (r GitRepo) Init() error {
 	}
 	return nil
 }
+
 func isDir(path string) bool {
 	st, err := os.Stat(path)
 	if err != nil {
@@ -192,6 +192,7 @@ func isDir(path string) bool {
 	}
 	return st.IsDir()
 }
+
 func (r GitRepo) GitRmFile(realpath RepoPath) (GitResult, error) {
 	add := GitResult{
 		Action: GitResultTypeError,
@@ -227,7 +228,7 @@ func (r GitRepo) GitRmFile(realpath RepoPath) (GitResult, error) {
 	}
 	if isdir {
 		for _, f := range add.Files {
-			_, err = w.Remove(f)
+			_, err = w.Remove(f.Sting())
 			if err != nil {
 				return add, fmt.Errorf("git rm err=%v file=%v:%v", err, realpath, f)
 			}
@@ -268,7 +269,7 @@ func (r GitRepo) GitRmFile(realpath RepoPath) (GitResult, error) {
 
 type GitResult struct {
 	Action GitAction
-	Files  []string
+	Files  []RepoPath
 }
 type GitAction string
 
