@@ -2,8 +2,10 @@ package util
 
 import (
 	"fmt"
-	"github.com/go-git/go-git/v6"
 	"slices"
+	"strings"
+
+	"github.com/go-git/go-git/v6"
 )
 
 type GitStatusResult struct {
@@ -54,17 +56,21 @@ func (s GitStatusResult) NeedGitRMFiles(work bool) (ret []RepoPath) {
 			status = v.Staging
 		}
 		if status == git.Deleted {
-			ret = append(ret, RepoPath(k))
+			if strings.HasPrefix(k, s.Path.Sting()) {
+				ret = append(ret, RepoPath(k))
+			}
 		}
 	}
 	return ret
 }
 
-func (s GitStatusResult) NeedGitAddFiles() (ret []string) {
+func (s GitStatusResult) NeedGitAddFiles() (ret []RepoPath) {
 	for k, v := range s.Status {
 		status := v.Worktree
 		if status == git.Modified || status == git.Untracked {
-			ret = append(ret, k)
+			if strings.HasPrefix(k, s.Path.Sting()) {
+				ret = append(ret, RepoPath(k))
+			}
 		}
 	}
 	return ret

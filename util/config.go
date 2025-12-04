@@ -29,8 +29,9 @@ func NewConfig() *Config {
 	ret.Load()
 	return &ret
 }
-func (c *Config) SetProfile(name string, p Profile)error {
+func (c *Config) SetProfile(name string, p Profile) error {
 	if name == "" {
+		c.RepoDir = p.RepoDir
 		c.Default = p
 	} else {
 		c.Profile[name] = p

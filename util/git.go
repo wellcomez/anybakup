@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/go-git/go-git/v6"
@@ -216,13 +217,18 @@ func (r GitRepo) CleanEmptyDir(path string) (int, error) {
 		return nil
 	})
 	for i := len(dirs) - 1; i >= 0; i-- {
-		if files, err := os.ReadDir(dirs[i]); err != nil {
+		newVar := dirs[i]
+		if newVar==r.root {
+			continue
+		}
+		if files, err := os.ReadDir(newVar); err != nil {
 			continue
 		} else if len(files) == 0 {
-			if filepath.Base(dirs[i]) == ".git" {
+			if strings.Contains(newVar, ".git") {
 				continue
 			}
-			os.RemoveAll(dirs[i])
+			fmt.Println(">>rmdir empty dir", newVar)
+			os.RemoveAll(newVar)
 			n++
 		}
 	}
@@ -261,20 +267,14 @@ func (r GitRepo) GitRmFile(realpath RepoPath) (GitResult, error) {
 		ret.Action = GitResultTypeNochange
 		return ret, nil
 	}
-	if isdir {
-		for _, f := range ret.Files {
-			_, err = w.Remove(f.Sting())
-			if err != nil {
-				return ret, fmt.Errorf("git rm err=%v file=%v:%v", err, realpath, f)
-			}
+	for _, f := range ret.Files {
+		_, err = w.Remove(f.Sting())
+		if err != nil {
+			return ret, fmt.Errorf("git rm err=%v file=%v:%v", err, realpath, f)
+		} else {
+			fmt.Println(">>>>>>rm", f.Sting())
 		}
-	} else {
-		_, err = w.Remove(string(realpath))
 	}
-	if err != nil {
-		return ret, fmt.Errorf("git rm err=%v file=%v", err, realpath)
-	}
-
 	afterState, err := r.Status(realpath)
 	if err != nil {
 		return ret, fmt.Errorf("git rm err=%v file=%v", err, realpath)
@@ -298,6 +298,7 @@ func (r GitRepo) GitRmFile(realpath RepoPath) (GitResult, error) {
 			return ret, fmt.Errorf("git commit err=%v file=%v:%v", err, realpath, realpath)
 		}
 		ret.Action = GitResultTypeRm
+		r.CleanEmptyDir(r.root)
 		return ret, nil
 	}
 }
@@ -335,17 +336,24 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 		return ret, fmt.Errorf("git add %v", err)
 	}
 	state.print("before add")
-	for _, v := range state.NeedGitAddFiles() {
+	needtoAddFiles := state.NeedGitAddFiles()
+	for _, v := range needtoAddFiles {
 		fmt.Printf(">>>>>find need to change %v\n", v)
 	}
-	if !state.NeedGitAdd() {
+	if len(needtoAddFiles) == 0 {
 		ret.Action = GitResultTypeNochange
 		return ret, nil
 	}
-	_, err = w.Add(gitpath.Sting())
-	if err != nil {
-		return ret, fmt.Errorf("git add %v %v", err, abspath)
+	for _, gitfile := range needtoAddFiles {
+		_, err = w.Add(gitfile.Sting())
+		if err != nil {
+			fmt.Printf(">>>>>%v git add %v %v\n", r.root, gitfile, err)
+			return ret, fmt.Errorf("git add %v %v", err, gitfile)
+		} else {
+			fmt.Printf(">>>>>%v git add %v %v\n", r.root, gitfile, "ok")
+		}
 	}
+
 	fmt.Println("-----------------after----------------")
 
 	state, err = r.Status(gitpath)
