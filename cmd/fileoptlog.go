@@ -136,10 +136,19 @@ func BakupOptAdd(srcFile string, destFile util.RepoPath, isFile bool, sub bool) 
 func BakupOptRm(file util.RepoPath) error {
 	db, err := NewSqldb()
 	if err != nil {
-		fmt.Printf("SQL Deleted file operation for 1 %s\n", file)
 		return err
 	}
 	defer db.Close()
+
+	// Check if file exists in database
+	var count int
+	checkQuery := `SELECT COUNT(*) FROM file_operations WHERE destfile = ?`
+	if err := db.db.QueryRow(checkQuery, file).Scan(&count); err == nil {
+		if count == 0 {
+			fmt.Printf("File %s not found in database, no deletion needed", file)
+			return nil
+		}
+	}
 
 	// Remove entries where either srcfile or destfile matches the given file
 	query := `DELETE FROM file_operations WHERE  destfile = ?`
@@ -147,12 +156,10 @@ func BakupOptRm(file util.RepoPath) error {
 	_, err = db.db.Exec(query, file)
 	// r.RowsAffected()
 	if err != nil {
-		fmt.Printf("SQL Deleted file operation for 2 %s\n", file)
 		return fmt.Errorf("sql failed to delete file operation:  %v", err)
 	} else {
 		fmt.Printf("SQL Deleted file operation for %s\n", file)
 	}
-
 	return nil
 }
 

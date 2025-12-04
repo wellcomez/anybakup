@@ -79,7 +79,7 @@ func TestAddFile(t *testing.T) {
 	}
 
 	// Verify file was copied to repo
-	copiedFile := filepath.Join(repoDir, result.Dest)
+	copiedFile := filepath.Join(repoDir, result.Dest.Sting())
 	content, err := os.ReadFile(copiedFile)
 	if err != nil {
 		t.Fatalf("Failed to read copied file: %v", err)

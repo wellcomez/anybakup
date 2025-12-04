@@ -39,6 +39,7 @@ import (
 	"unsafe"
 
 	"anybakup/cmd"
+	"anybakup/util"
 	// "fmt"
 )
 
@@ -237,7 +238,7 @@ func RmFileC(filePath *C.char) C.int {
 	}
 
 	goFilePath := C.GoString(filePath)
-	err := cmd.RmFile(goFilePath)
+	err := cmd.RmFile(util.RepoPath(goFilePath))
 	if err != nil {
 		fmt.Printf("RmFileC failed %v err=%v", goFilePath, err)
 		return -2

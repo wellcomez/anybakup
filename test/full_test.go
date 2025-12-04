@@ -47,6 +47,9 @@ func setupTestEnv(t *testing.T) (repoDir string, cleanup func()) {
 	return repoDir, cleanup
 }
 func TestGitAddFile(t *testing.T) {
+	repo, clean := setupTestEnv(t)
+	defer clean()
+	fmt.Printf("t: %v\n", repo)
 	r, err := util.NewGitReop()
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)

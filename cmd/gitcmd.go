@@ -89,7 +89,7 @@ func AddFile(arg string) (ret Result_git_add) {
 	return
 }
 
-func RmFile(arg string) error {
+func RmFileAbs(arg string) error {
 	file, err := filepath.Abs(arg)
 	if err != nil {
 		return err
@@ -99,6 +99,13 @@ func RmFile(arg string) error {
 		return err
 	}
 	gitPath := repo.Src2Repo(file)
+	return RmFile(gitPath)
+}
+func RmFile(gitPath util.RepoPath) error {
+	repo, err := util.NewGitReop()
+	if err != nil {
+		return err
+	}
 	if yes, err := repo.GitRmFile(gitPath); err != nil {
 		return err
 	} else {

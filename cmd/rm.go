@@ -15,7 +15,7 @@ var rmCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		filePath := args[0]
 
-		err := RmFile(filePath)
+		err := RmFileAbs(filePath)
 		if err != nil {
 			fmt.Println(err)
 		} else {
