@@ -50,9 +50,9 @@ func GetFileLogC(filePath *C.char) *C.GitChangeArray {
 	if filePath == nil {
 		return nil
 	}
-
+	g := cmd.GitCmd{}
 	goFilePath := C.GoString(filePath)
-	logs, err := cmd.GetFileLog(goFilePath)
+	logs, err := g.GetFileLog(goFilePath)
 	if err != nil {
 		return nil
 	}
@@ -236,9 +236,9 @@ func RmFileC(filePath *C.char) C.int {
 		// return C.CString("error: file path is nil")
 		return -1
 	}
-
+	g := cmd.GitCmd{}
 	goFilePath := C.GoString(filePath)
-	err := cmd.RmFile(util.RepoPath(goFilePath))
+	err := g.RmFile(util.RepoPath(goFilePath))
 	if err != nil {
 		fmt.Printf("RmFileC failed %v err=%v", goFilePath, err)
 		return -2
@@ -256,9 +256,9 @@ func AddFileC(filePath *C.char) C.int {
 		// return C.CString("error: file path is nil")
 		return -1
 	}
-
+	g := cmd.GitCmd{}
 	goFilePath := C.GoString(filePath)
-	result := cmd.AddFile(goFilePath)
+	result := g.AddFile(goFilePath)
 	if result.Err != nil {
 		return -2
 		// return C.CString(fmt.Sprintf("error: %v", result.Err))
@@ -279,8 +279,8 @@ func GetFileC(filePath *C.char, commit *C.char, target *C.char) C.int {
 	goFilePath := C.GoString(filePath)
 	goCommit := C.GoString(commit)
 	goTarget := C.GoString(target)
-
-	err := cmd.GetFile(goFilePath, goCommit, goTarget)
+	g := cmd.GitCmd{}
+	err := g.GetFile(goFilePath, goCommit, goTarget)
 	if err != nil {
 		return -2
 		// return C.CString(fmt.Sprintf("error: %v", err))
