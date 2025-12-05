@@ -273,7 +273,7 @@ func GitInitC(profilename *C.char, filePath *C.char) C.int {
 	}
 	goFilePath := C.GoString(filePath)
 	goProfileName := C.GoString(profilename)
-	if err := cmd.GitInitProfile(goProfileName, goFilePath); err == nil {
+	if _,err := cmd.GitInitProfile(goProfileName, goFilePath); err == nil {
 		return 0
 	} else {
 		return -1

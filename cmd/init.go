@@ -1,35 +1,43 @@
 package cmd
 
 import (
-	"anybakup/util"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"anybakup/util"
+
 	"github.com/spf13/cobra"
 )
 
-func GitInitProfile(profile, repoPath string) error {
+func GitInitProfile(profile, repoPath string) (*util.GitRepo, error) {
+	if err := os.MkdirAll(repoPath, 0o755); err != nil {
+		fmt.Printf("Error creating directory: %v\n", err)
+		return nil, err
+	}
 	p := util.Profile{
 		RepoDir: util.RepoRoot(repoPath),
 	}
 	c := util.NewConfig()
 	if err := c.SetProfile(profile, p); err != nil {
-		return fmt.Errorf("error saving config: %v", err)
+		c.Print()
+		return nil, fmt.Errorf("error saving config: %v", err)
 	}
+	c.Print()
 	// Initialize git repository
-	if _, err := util.NewGitReop(c); err != nil {
-		return fmt.Errorf("error initializing git repository: %v", err)
+	if ret, err := util.NewGitReop(c); err != nil {
+		return ret, fmt.Errorf("error initializing git repository: %v", err)
+	} else {
+		return ret, nil
 	}
-	return nil
 }
 
 // initCmd represents the init command
 var initCmd = &cobra.Command{
-	Use:   "init [directory]",
+	Use:   "init [directory] [profile]",
 	Short: "Initialize a new repository",
-	Long:  `Initialize a new repository at the specified directory.`,
-	Args:  cobra.ExactArgs(1),
+	Long:  `Initialize a new repository at the specified directory with an optional profile.`,
+	Args:  cobra.RangeArgs(1, 2),
 	Run: func(cmd *cobra.Command, args []string) {
 		repoPath := args[0]
 		absPath, err := filepath.Abs(repoPath)
@@ -38,32 +46,16 @@ var initCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		// // 1. Create and ensure dir a
-		// if err := os.MkdirAll(absPath, 0755); err != nil {
-		// 	fmt.Printf("Error creating directory: %v\n", err)
-		// 	os.Exit(1)
-		// }
-		// fmt.Printf("Initialized empty repository in %s\n", absPath)
-
-		// p := util.Profile{
-		// 	RepoDir: util.RepoRoot(absPath),
-		// }
-		// c := util.NewConfig()
-		// if err := c.SetProfile("", p); err != nil {
-		// 	fmt.Printf("Error saving config: %v\n", err)
-		// 	os.Exit(1)
-		// }
-		// // Initialize git repository
-		// if _, err := util.NewGitReop(c); err != nil {
-		// 	fmt.Printf("Error initializing git repository: %v\n", err)
-		// 	os.Exit(1)
-		// }
-
-		if err := GitInitProfile("", absPath); err != nil {
-			fmt.Printf("Error initializing profile: %v\n", err)
-			os.Exit(1)
+		profile := ""
+		if len(args) > 1 {
+			profile = args[1]
 		}
 
+		if ret, err := GitInitProfile(profile, absPath); err != nil {
+			fmt.Printf("Error initializing profile: %v\n", err)
+		} else if ret != nil {
+		}
+		os.Exit(1)
 	},
 }
 
