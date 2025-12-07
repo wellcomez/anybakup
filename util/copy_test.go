@@ -264,7 +264,7 @@ func TestCopyToRepo_NestedDirectories(t *testing.T) {
 	}
 
 	// Verify deep file exists
-	destDeepFile := filepath.Join(repoDir, SrcPath(testDir).Sting(), "a", "b", "c", "d", "deep.txt")
+	destDeepFile := filepath.Join(repoDir, string(SrcPath(testDir).Repo()), "a", "b", "c", "d", "deep.txt")
 	content, err := os.ReadFile(destDeepFile)
 	if err != nil {
 		t.Fatalf("Failed to read deep file: %v", err)

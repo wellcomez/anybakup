@@ -9,7 +9,7 @@ import (
 
 	"anybakup/util"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 type FileOperation struct {
@@ -38,7 +38,7 @@ func NewSqldb(c *util.Config) (*sqldb, error) {
 	}
 
 	// Open database connection
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %v", err)
 	}
