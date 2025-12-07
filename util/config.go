@@ -27,13 +27,14 @@ func (r RepoRoot) String() string {
 }
 
 func (r RepoRoot) With(s string) string {
-	ret := fmt.Sprintf("%s/%s", r.String(), s)
-	return ret
+	return filepath.Join(r.String(), s)
+	// ret := fmt.Sprintf("%s/%s", r.String(), s)
+	// return ret
 }
 
 func NewConfig() *Config {
 	ret := Config{}
-	if err:=ret.Load(); err != nil {
+	if err := ret.Load(); err != nil {
 		logrus.Warnf("error loading config: %v", err)
 	}
 	return &ret

@@ -54,12 +54,7 @@ all: check test build
 build: 
 	make lib
 	@echo "Building $(BINARY_NAME) version $(VERSION)..."
-	@$(MKDIR) temp_test
-	@$(MOVE) test_*.c temp_test/ 2>/dev/null || true
-	@$(MOVE) test_*.py temp_test/ 2>/dev/null || true
 	$(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)$(EXE_EXT) $(MAIN_PATH)
-	@$(MOVE) temp_test/* . 2>/dev/null || true
-	@$(RMDIR) temp_test/ 2>/dev/null || true
 	@echo "Build completed successfully!"
 
 # Install the project (go install)
@@ -111,12 +106,7 @@ lint:
 # Vet the code
 vet:
 	@echo "Vetting code..."
-	@$(MKDIR) temp_test
-	@$(MOVE) test_*.c temp_test/ 2>/dev/null || true
-	@$(MOVE) test_*.py temp_test/ 2>/dev/null || true
 	$(GO) vet ./...
-	@$(MOVE) temp_test/* . 2>/dev/null || true
-	@$(RMDIR) temp_test/ 2>/dev/null || true
 	@echo "Vetting completed!"
 
 # Run all checks
@@ -135,44 +125,21 @@ vuln-check:
 
 # Run specific commands for different architectures (cross-compilation)
 build-linux-amd64:
-	@$(MKDIR) temp_test
-	@$(MOVE) test_*.c temp_test/ 2>/dev/null || true
-	@$(MOVE) test_*.py temp_test/ 2>/dev/null || true
 	GOOS=linux GOARCH=amd64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 $(MAIN_PATH)
-	@$(MOVE) temp_test/* . 2>/dev/null || true
-	@$(RMDIR) temp_test/ 2>/dev/null || true
 
 build-linux-arm64:
-	@$(MKDIR) temp_test
-	@$(MOVE) test_*.c temp_test/ 2>/dev/null || true
-	@$(MOVE) test_*.py temp_test/ 2>/dev/null || true
 	GOOS=linux GOARCH=arm64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 $(MAIN_PATH)
-	@$(MOVE) temp_test/* . 2>/dev/null || true
-	@$(RMDIR) temp_test/ 2>/dev/null || true
 
 build-darwin-amd64:
-	@$(MKDIR) temp_test
-	@$(MOVE) test_*.c temp_test/ 2>/dev/null || true
-	@$(MOVE) test_*.py temp_test/ 2>/dev/null || true
 	GOOS=darwin GOARCH=amd64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64 $(MAIN_PATH)
-	@$(MOVE) temp_test/* . 2>/dev/null || true
-	@$(RMDIR) temp_test/ 2>/dev/null || true
 
 build-darwin-arm64:
-	@$(MKDIR) temp_test
-	@$(MOVE) test_*.c temp_test/ 2>/dev/null || true
-	@$(MOVE) test_*.py temp_test/ 2>/dev/null || true
 	GOOS=darwin GOARCH=arm64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 $(MAIN_PATH)
-	@$(MOVE) temp_test/* . 2>/dev/null || true
-	@$(RMDIR) temp_test/ 2>/dev/null || true
 
 build-windows-amd64:
-	@$(MKDIR) temp_test
-	@$(MOVE) test_*.c temp_test/ 2>/dev/null || true
-	@$(MOVE) test_*.py temp_test/ 2>/dev/null || true
-	GOOS=windows GOARCH=amd64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe $(MAIN_PATH)
-	@$(MOVE) temp_test/* . 2>/dev/null || true
-	@$(RMDIR) temp_test/ 2>/dev/null || true
+	set GOOS=windows
+	set GOARCH=amd64
+	go build -ldflags "-X main.version=dc65b32-dirty -X main.commitHash=dc65b32 -X main.buildTime=%Y-%m-%dT%H:%M:%SZ -s -w" -o build/anybakup-windows-amd64.exe .
 
 # Build for all platforms
 build-all: build-linux-amd64 build-linux-arm64 build-darwin-amd64 build-darwin-arm64 build-windows-amd64 lib
@@ -181,45 +148,72 @@ build-all: build-linux-amd64 build-linux-arm64 build-darwin-amd64 build-darwin-a
 # Build cmd/gitcmd.go as a dynamic library
 lib:
 	@echo "Building gitcmd dynamic library..."
-ifeq ($(DETECTED_OS),Windows)
-	$(GO) build -buildmode=c-shared -o $(BUILD_DIR)/gitcmd.dll ./cmd/gitcmd-lib
-else ifeq ($(DETECTED_OS),Darwin)
-	$(GO) build -buildmode=c-shared -o $(BUILD_DIR)/libgitcmd.dylib ./cmd/gitcmd-lib
-else
-	$(GO) build -buildmode=c-shared -o $(BUILD_DIR)/libgitcmd.so ./cmd/gitcmd-lib
-endif
+	@if "$(OS)" == "Windows_NT" $(MAKE) build-windows-lib \
+	else if "$(shell uname)" == "Darwin" $(MAKE) build-darwin-lib \
+	else $(MAKE) build-unix-lib
 	@echo "gitcmd dynamic library build completed!"
 
-# Build and run C test for the dynamic library
-test-lib: lib
-	@echo "Building C test program..."
-ifeq ($(DETECTED_OS),Windows)
-	gcc -o $(BUILD_DIR)/test_gitcmd$(EXE_EXT) temp_test/test_gitcmd.c -L$(BUILD_DIR) -lgitcmd
-	@echo "Running C test program..."
-	./$(BUILD_DIR)/test_gitcmd$(EXE_EXT)
-else
-	gcc -o $(BUILD_DIR)/test_gitcmd temp_test/test_gitcmd.c -L$(BUILD_DIR) -lgitcmd -Wl,-rpath,$(abspath $(BUILD_DIR))
-	@echo "Running C test program..."
-	./$(BUILD_DIR)/test_gitcmd
-endif
+build-windows-lib:
+	@echo "Building Windows DLL..."
+	@echo "Checking prerequisites..."
+	@where gcc >nul 2>&1 || (echo "Error: GCC not found. Please install MinGW-w64" && exit /b 1)
+	@if not exist $(BUILD_DIR) mkdir $(BUILD_DIR)
+	@echo "Setting environment variables..."
+	@set CGO_ENABLED=1
+	@set GOOS=windows
+	@set GOARCH=amd64
+	@set CC=gcc
+	@echo "Building DLL..."
+	$(GO) build -buildmode=c-shared \
+		-ldflags="-s -w" \
+		-o $(BUILD_DIR)/gitcmd$(DLL_EXT) \
+		./cmd/gitcmd-lib
+	@if exist $(BUILD_DIR)\gitcmd$(DLL_EXT) (
+		echo "Successfully built gitcmd$(DLL_EXT)"
+		if exist $(BUILD_DIR)\gitcmd.h echo "Generated header file: gitcmd.h"
+	) else (
+		echo "Error: Failed to build gitcmd$(DLL_EXT)"
+		exit /b 1
+	)
 
-# Build and run C test with real files
-test-lib-real: lib
-	@echo "Building C test program with real files..."
-ifeq ($(DETECTED_OS),Windows)
-	gcc -o $(BUILD_DIR)/test_gitcmd_real$(EXE_EXT) temp_test/test_gitcmd_real.c -L$(BUILD_DIR) -lgitcmd
-	@echo "Running C test program with real files..."
-	./$(BUILD_DIR)/test_gitcmd_real$(EXE_EXT)
-else
-	gcc -o $(BUILD_DIR)/test_gitcmd_real temp_test/test_gitcmd_real.c -L$(BUILD_DIR) -lgitcmd -Wl,-rpath,$(abspath $(BUILD_DIR))
-	@echo "Running C test program with real files..."
-	./$(BUILD_DIR)/test_gitcmd_real
-endif
+
+build-darwin-lib:
+	$(GO) build -buildmode=c-shared -o $(BUILD_DIR)/libgitcmd.dylib ./cmd/gitcmd-lib
+
+build-unix-lib:
+	$(GO) build -buildmode=c-shared -o $(BUILD_DIR)/libgitcmd.so ./cmd/gitcmd-lib
+
+
+# Build and run C test for the dynamic library
+# test-lib: lib
+# 	@echo "Building C test program..."
+# ifeq ($(DETECTED_OS),Windows)
+# 	gcc -o $(BUILD_DIR)/test_gitcmd$(EXE_EXT) temp_test/test_gitcmd.c -L$(BUILD_DIR) -lgitcmd
+# 	@echo "Running C test program..."
+# 	./$(BUILD_DIR)/test_gitcmd$(EXE_EXT)
+# else
+# 	gcc -o $(BUILD_DIR)/test_gitcmd temp_test/test_gitcmd.c -L$(BUILD_DIR) -lgitcmd -Wl,-rpath,$(abspath $(BUILD_DIR))
+# 	@echo "Running C test program..."
+# 	./$(BUILD_DIR)/test_gitcmd
+# endif
+
+# # Build and run C test with real files
+# test-lib-real: lib
+# 	@echo "Building C test program with real files..."
+# ifeq ($(DETECTED_OS),Windows)
+# 	gcc -o $(BUILD_DIR)/test_gitcmd_real$(EXE_EXT) temp_test/test_gitcmd_real.c -L$(BUILD_DIR) -lgitcmd
+# 	@echo "Running C test program with real files..."
+# 	./$(BUILD_DIR)/test_gitcmd_real$(EXE_EXT)
+# else
+# 	gcc -o $(BUILD_DIR)/test_gitcmd_real temp_test/test_gitcmd_real.c -L$(BUILD_DIR) -lgitcmd -Wl,-rpath,$(abspath $(BUILD_DIR))
+# 	@echo "Running C test program with real files..."
+# 	./$(BUILD_DIR)/test_gitcmd_real
+# endif
 
 # Clean test and library artifacts
 clean-lib:
 	@echo "Cleaning library and test artifacts..."
-	@$(RMDIR) temp_test 2>/dev/null || true
+# 	@$(RMDIR) temp_test 2>/dev/null || true
 ifeq ($(DETECTED_OS),Windows)
 	@$(RM) $(BUILD_DIR)\gitcmd.dll $(BUILD_DIR)\gitcmd.h $(BUILD_DIR)\test_gitcmd$(EXE_EXT) $(BUILD_DIR)\test_gitcmd_real$(EXE_EXT) 2>nul
 else

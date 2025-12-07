@@ -3,6 +3,7 @@ package util
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -45,6 +46,62 @@ func setupTestEnv(t *testing.T) (repoDir string, cleanup func()) {
 
 // TestCopyToRepo_SingleFile tests copying a single file
 func TestCopyToRepo_SingleFile(t *testing.T) {
+	iswindows := runtime.GOOS == "windows"
+	if iswindows {
+		test_copy_window(t)
+	} else {
+		test_copy_linux(t)
+	}
+}
+func test_copy_window(t *testing.T) {
+	repoDir, cleanup := setupTestEnv(t)
+	r := GitRepo{
+		root: repoDir,
+	}
+	defer cleanup()
+
+	// Create a test file
+	testDir, err := os.MkdirTemp("", "test-src-*")
+	if err != nil {
+		t.Fatalf("Failed to create test dir: %v", err)
+	}
+	defer os.RemoveAll(testDir)
+
+	testFile := filepath.Join(testDir, "test.txt")
+	testContent := "Hello, World!"
+	if err := os.WriteFile(testFile, []byte(testContent), 0644); err != nil {
+		t.Fatalf("Failed to write test file: %v", err)
+	}
+
+	// Copy the file
+	d, err := r.CopyToRepo(SrcPath(testFile))
+	if err != nil {
+		t.Fatalf("CopyToRepo failed: %v", err)
+	}
+	dest := d.ToAbs(r)
+	// Verify destination path
+	expectedDest := filepath.Join(repoDir, string(r.Src2Repo(testFile)))
+	if dest != expectedDest {
+		t.Errorf("Expected dest %s, got %s", expectedDest, dest)
+	}
+
+	// Verify file exists and has correct content
+	content, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatalf("Failed to read copied file: %v", err)
+	}
+	if string(content) != testContent {
+		t.Errorf("Expected content %q, got %q", testContent, string(content))
+	}
+
+	// Verify permissions
+	srcInfo, _ := os.Stat(testFile)
+	dstInfo, _ := os.Stat(dest)
+	if srcInfo.Mode() != dstInfo.Mode() {
+		t.Errorf("Permissions not preserved: src=%v, dst=%v", srcInfo.Mode(), dstInfo.Mode())
+	}
+}
+func test_copy_linux(t *testing.T) {
 	repoDir, cleanup := setupTestEnv(t)
 	r := GitRepo{
 		root: repoDir,
@@ -131,7 +188,7 @@ func TestCopyToRepo_Directory(t *testing.T) {
 	}
 	dest := gitpath.ToAbs(r)
 	// Verify destination path
-	expectedDest := filepath.Join(repoDir, testDir[1:])
+	expectedDest := filepath.Join(repoDir, string(SrcPath(testDir).Repo()))
 	if dest != expectedDest {
 		t.Errorf("Expected dest %s, got %s", expectedDest, dest)
 	}
@@ -207,7 +264,7 @@ func TestCopyToRepo_NestedDirectories(t *testing.T) {
 	}
 
 	// Verify deep file exists
-	destDeepFile := filepath.Join(repoDir, testDir[1:], "a", "b", "c", "d", "deep.txt")
+	destDeepFile := filepath.Join(repoDir, SrcPath(testDir).Sting(), "a", "b", "c", "d", "deep.txt")
 	content, err := os.ReadFile(destDeepFile)
 	if err != nil {
 		t.Fatalf("Failed to read deep file: %v", err)
