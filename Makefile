@@ -78,7 +78,24 @@ test:
 	@echo "Running tests..."
 	$(GO) test -v ./...
 	@echo "Tests completed!"
+	@if "$(OS)" == "Windows_NT" $(MAKE) test-windows\
+	else if "$(shell uname)" == "Darwin" $(MAKE) test-darwin\
+	else $(MAKE) test-linux
 
+test-darwin:
+	$(GO) test -v ./...
+
+test-linux:
+	$(GO) test -v ./...
+
+test-windows:
+	@echo "Running tests for Windows..."
+	@set CGO_ENABLED=1
+	@set GOOS=windows
+	@set GOARCH=amd64
+	@set CC=x86_64-w64-mingw32-gcc
+	go test -v -c -o $(BUILD_DIR)/test-windows$(TEST_EXT) ./...
+	@$(BUILD_DIR)/test-windows$(TEST_EXT) -test.v
 # Run tests with coverage
 coverage:
 	@echo "Running tests with coverage..."

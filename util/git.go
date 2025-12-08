@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
+	// "runtime"
 	"strings"
 	"time"
 
@@ -15,8 +15,6 @@ import (
 )
 
 type (
-	RepoPath string
-	SrcPath  string
 	SysPath  string
 	RepoRoot string
 	GitRepo  struct {
@@ -27,6 +25,7 @@ type (
 )
 
 func (r GitRepo) Status(gitfile RepoPath) (GitStatusResult, error) {
+	gitfile = gitfile.UnitxStyle()
 	ret := GitStatusResult{Staging: GitStatusErro, Worktree: GitStatusErro, Path: gitfile}
 	if git, err := r.Open(); err != nil {
 		return ret, fmt.Errorf("status file Open %v", err)
@@ -39,52 +38,26 @@ func (r GitRepo) Status(gitfile RepoPath) (GitStatusResult, error) {
 			st := status.File(gitfile.Sting())
 			ret.Staging = GetStatuscode(st.Staging)
 			ret.Worktree = GetStatuscode(st.Worktree)
+			// ret.Status = make(GitStatus2)
 			ret.Status = status
+			// for k, v := range status {
+			// 	// if runtime.GOOS == "windows" {
+			// 	// 	k = strings.Replace(k, "/", "\\", -1)
+			// 	// }
+			// 	ret.Status[k] = &FileStatus2{
+			// 		Staging:  v.Staging,
+			// 		Worktree: v.Worktree,
+			// 		Extra:    v.Extra,
+			// 	}
+			// }
 			return ret, nil
 		}
 	}
 }
 
-func (s SrcPath) Repo() RepoPath {
-	var rel string
-	var err error
 
-	if filepath.IsAbs(string(s)) {
-		// Handle Windows drive letters properly
-		if runtime.GOOS == "windows" {
-			// Extract drive letter and get relative path within that drive
-			disk := filepath.VolumeName(string(s))
-			rel, err = filepath.Rel(disk+"\\", string(s))
-			if err == nil {
-				disk = strings.Replace(disk, ":", "", -1)
-				rel = fmt.Sprintf("vol%s\\%s", disk, rel)
-			}
-		} else {
-			rel, err = filepath.Rel("/", string(s))
-		}
-	} else {
-		rel = string(s)
-		err = nil
-	}
 
-	if err != nil {
-		return ""
-	}
-	return RepoPath(rel)
-}
 
-func (s SrcPath) Sting() string {
-	return string(s)
-}
-
-func (s RepoPath) Sting() string {
-	return string(s)
-}
-
-func (s RepoPath) ToAbs(repo GitRepo) string {
-	r := RepoRoot(repo.root)
-	return r.With(s.Sting())
-}
 
 func (r GitRepo) Rel(s string) (string, error) {
 	if !filepath.IsAbs(s) {
@@ -254,6 +227,7 @@ func (r GitRepo) CleanEmptyDir(path string) ([]RepoPath, error) {
 	return n, err
 }
 func (r GitRepo) GitRmFile(realpath RepoPath) (GitResult, error) {
+	realpath = realpath.UnitxStyle()
 	ret := GitResult{
 		Action: GitResultTypeError,
 	}
@@ -338,6 +312,7 @@ const (
 )
 
 func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
+	gitpath = gitpath.UnitxStyle()
 	abspath := gitpath.ToAbs(r)
 	// gitfile := gitpath.Sting()
 	ret := GitResult{
@@ -408,6 +383,7 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 }
 
 func (r GitRepo) GitViewFile(gitpath RepoPath, commitHash string, outpath string) (string, error) {
+	gitpath = gitpath.UnitxStyle()
 	repo, err := r.Open()
 	if err != nil {
 		return "", fmt.Errorf("git view file: failed to open repo: %v", err)
@@ -546,6 +522,7 @@ type GitChanges struct {
 // GitLogFile retrieves the commit history for a specific file
 // Returns a formatted string with commit logs
 func (r GitRepo) GitLogFile(repoRelPath RepoPath) ([]GitChanges, error) {
+	repoRelPath = repoRelPath.UnitxStyle()
 	repo := r.repo
 	gitfile := repoRelPath.Sting()
 
