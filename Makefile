@@ -51,7 +51,8 @@ GOVULNCHECK := govulncheck
 all: check test build
 
 # Build the project
-build: lib
+build: 
+	make lib
 	@echo "Building $(BINARY_NAME) version $(VERSION)..."
 	@$(MKDIR) temp_test
 	@$(MOVE) test_*.c temp_test/ 2>/dev/null || true

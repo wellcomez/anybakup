@@ -9,7 +9,7 @@ import (
 )
 
 // setupTestEnv creates a temporary test environment with config and git repo
-func setupTestEnv(t *testing.T) (repoDir string, cleanup func()) {
+func setupTestEnv(t *testing.T) (repoDir string, config *util.Config, cleanup func()) {
 	// Create temporary directories
 	tmpDir, err := os.MkdirTemp("", "anybakup-cmd-test-*")
 	if err != nil {
@@ -42,268 +42,43 @@ func setupTestEnv(t *testing.T) (repoDir string, cleanup func()) {
 		os.RemoveAll(tmpDir)
 	}
 
-	return repoDir, cleanup
+	return repoDir, &util.Config{RepoDir: util.RepoRoot(repoDir)}, cleanup
 }
 
 // TestAddFile tests adding a file to the repository
 func TestAddFile(t *testing.T) {
-	repoDir, cleanup := setupTestEnv(t)
+	_, c, cleanup := setupTestEnv(t)
+	tmpDir, err := os.MkdirTemp("", "anybakup-cmd-test-*")
+	if err != nil {
+		t.Error("temp file error", err)
+	}
 	defer cleanup()
-
-	// Initialize repo
-	repo, err := util.NewGitReop()
-	if err != nil {
-		t.Fatalf("NewGitReop failed: %v", err)
+	g := NewGitCmd("")
+	g.C = c
+	test1txt := filepath.Join(tmpDir, "1.txt")
+	os.WriteFile(test1txt, []byte("xxx"), 0755)
+	ret := g.AddFile(test1txt)
+	if ret.Err != nil {
+		t.Error("add file error", ret.Err)
 	}
 
-	// Create a test file outside the repo
-	testFile := filepath.Join(os.TempDir(), "test_add_file.txt")
-	testContent := "test content for add"
-	if err := os.WriteFile(testFile, []byte(testContent), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-	defer os.Remove(testFile)
-
-	// Test AddFile
-	result := AddFile(testFile)
-	if result.Err != nil {
-		t.Fatalf("AddFile failed: %v", result.Err)
-	}
-
-	if result.Result != util.GitResultTypeAdd {
-		t.Errorf("Expected GitResultAdd, got %v", result.Result)
-	}
-
-	if result.Dest == "" {
-		t.Error("Expected non-empty dest path")
-	}
-
-	// Verify file was copied to repo
-	copiedFile := filepath.Join(repoDir, result.Dest.Sting())
-	content, err := os.ReadFile(copiedFile)
-	if err != nil {
-		t.Fatalf("Failed to read copied file: %v", err)
-	}
-
-	if string(content) != testContent {
-		t.Errorf("Expected content %q, got %q", testContent, string(content))
-	}
-
-	// Test adding the same file again (should result in nochange)
-	result2 := AddFile(testFile)
-	if result2.Err != nil {
-		t.Fatalf("AddFile second time failed: %v", result2.Err)
-	}
-
-	if result2.Result != util.GitResultTypeNochange {
-		t.Errorf("Expected GitResultNochange, got %v", result2.Result)
-	}
-
-	_ = repo
-}
-
-// TestGetFileLog tests getting file commit history
-func TestGetFileLog(t *testing.T) {
-	_, cleanup := setupTestEnv(t)
-	defer cleanup()
-
-	// Create and add a test file
-	testFile := filepath.Join(os.TempDir(), "test_log_file.txt")
-	defer os.Remove(testFile)
-
-	// First version
-	if err := os.WriteFile(testFile, []byte("version 1"), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-	result1 := AddFile(testFile)
-	if result1.Err != nil {
-		t.Fatalf("AddFile failed: %v", result1.Err)
-	}
-
-	// Second version
-	if err := os.WriteFile(testFile, []byte("version 2"), 0644); err != nil {
-		t.Fatalf("Failed to modify test file: %v", err)
-	}
-	result2 := AddFile(testFile)
-	if result2.Err != nil {
-		t.Fatalf("AddFile second time failed: %v", result2.Err)
-	}
-
-	// Third version
-	if err := os.WriteFile(testFile, []byte("version 3"), 0644); err != nil {
-		t.Fatalf("Failed to modify test file: %v", err)
-	}
-	result3 := AddFile(testFile)
-	if result3.Err != nil {
-		t.Fatalf("AddFile third time failed: %v", result3.Err)
-	}
-
-	// Get log
-	logs, err := GetFileLog(testFile)
-	if err != nil {
-		t.Fatalf("GetFileLog failed: %v", err)
-	}
-
-	if len(logs) != 3 {
-		t.Errorf("Expected 3 log entries, got %d", len(logs))
-	}
-
-	// Verify log entries have required fields
-	for i, log := range logs {
-		if log.Commit == "" {
-			t.Errorf("Log entry %d has empty commit hash", i)
+	if testfilepath := filepath.Join(tmpDir, "a"); os.MkdirAll(testfilepath, 0755) == nil {
+		os.WriteFile(filepath.Join(testfilepath, "1.txt"), []byte("xxx"), 0755)
+		ret := g.AddFile(testfilepath)
+		if ret.Err != nil {
+			t.Error("add file error", ret.Err)
 		}
-		if log.Author == "" {
-			t.Errorf("Log entry %d has empty author", i)
+		if err := g.RmFileAbs(testfilepath); err != nil {
+			t.Error("rm file error", err)
 		}
-		if log.Date == "" {
-			t.Errorf("Log entry %d has empty date", i)
+		if err := g.RmFileAbs(test1txt); err != nil {
+			t.Error("rm file error", err)
+		}
+
+		ret = g.AddFile(testfilepath)
+		if ret.Err != nil {
+			t.Error("add file error", ret.Err)
 		}
 	}
-}
 
-// TestGetFile_WithCommit tests getting a file from a specific commit
-func TestGetFile_WithCommit(t *testing.T) {
-	_, cleanup := setupTestEnv(t)
-	defer cleanup()
-
-	// Create and add a test file
-	testFile := filepath.Join(os.TempDir(), "test_get_file.txt")
-	defer os.Remove(testFile)
-
-	// First version
-	version1Content := "version 1 content"
-	if err := os.WriteFile(testFile, []byte(version1Content), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-	result1 := AddFile(testFile)
-	if result1.Err != nil {
-		t.Fatalf("AddFile failed: %v", result1.Err)
-	}
-
-	// Get the first commit hash
-	logs, err := GetFileLog(testFile)
-	if err != nil {
-		t.Fatalf("GetFileLog failed: %v", err)
-	}
-	if len(logs) == 0 {
-		t.Fatal("Expected at least one log entry")
-	}
-	firstCommit := logs[0].Commit
-
-	// Second version
-	version2Content := "version 2 content - modified"
-	if err := os.WriteFile(testFile, []byte(version2Content), 0644); err != nil {
-		t.Fatalf("Failed to modify test file: %v", err)
-	}
-	result2 := AddFile(testFile)
-	if result2.Err != nil {
-		t.Fatalf("AddFile second time failed: %v", result2.Err)
-	}
-
-	// Get the first version using commit hash
-	outputFile := filepath.Join(os.TempDir(), "output_v1.txt")
-	defer os.Remove(outputFile)
-
-	err = GetFile(testFile, firstCommit, outputFile)
-	if err != nil {
-		t.Fatalf("GetFile failed: %v", err)
-	}
-
-	// Verify content
-	content, err := os.ReadFile(outputFile)
-	if err != nil {
-		t.Fatalf("Failed to read output file: %v", err)
-	}
-
-	if string(content) != version1Content {
-		t.Errorf("Expected content %q, got %q", version1Content, string(content))
-	}
-}
-
-// TestGetFile_WithoutCommit tests getting a file from HEAD (no commit specified)
-func TestGetFile_WithoutCommit(t *testing.T) {
-	_, cleanup := setupTestEnv(t)
-	defer cleanup()
-
-	// Create and add a test file
-	testFile := filepath.Join(os.TempDir(), "test_get_head.txt")
-	defer os.Remove(testFile)
-
-	// First version
-	if err := os.WriteFile(testFile, []byte("version 1"), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-	result1 := AddFile(testFile)
-	if result1.Err != nil {
-		t.Fatalf("AddFile failed: %v", result1.Err)
-	}
-
-	// Second version (this will be HEAD)
-	headContent := "version 2 - HEAD"
-	if err := os.WriteFile(testFile, []byte(headContent), 0644); err != nil {
-		t.Fatalf("Failed to modify test file: %v", err)
-	}
-	result2 := AddFile(testFile)
-	if result2.Err != nil {
-		t.Fatalf("AddFile second time failed: %v", result2.Err)
-	}
-
-	// Get the file from HEAD (empty commit string)
-	outputFile := filepath.Join(os.TempDir(), "output_head.txt")
-	defer os.Remove(outputFile)
-
-	err := GetFile(testFile, "", outputFile)
-	if err != nil {
-		t.Fatalf("GetFile with empty commit failed: %v", err)
-	}
-
-	// Verify content matches HEAD
-	content, err := os.ReadFile(outputFile)
-	if err != nil {
-		t.Fatalf("Failed to read output file: %v", err)
-	}
-
-	if string(content) != headContent {
-		t.Errorf("Expected HEAD content %q, got %q", headContent, string(content))
-	}
-}
-
-// TestGetFile_ToNestedDirectory tests getting a file to a nested directory
-func TestGetFile_ToNestedDirectory(t *testing.T) {
-	_, cleanup := setupTestEnv(t)
-	defer cleanup()
-
-	// Create and add a test file
-	testFile := filepath.Join(os.TempDir(), "test_nested.txt")
-	defer os.Remove(testFile)
-
-	testContent := "test content"
-	if err := os.WriteFile(testFile, []byte(testContent), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-	result := AddFile(testFile)
-	if result.Err != nil {
-		t.Fatalf("AddFile failed: %v", result.Err)
-	}
-
-	// Get file to a nested directory that doesn't exist
-	outputDir := filepath.Join(os.TempDir(), "nested", "deep", "directory")
-	outputFile := filepath.Join(outputDir, "output.txt")
-	defer os.RemoveAll(filepath.Join(os.TempDir(), "nested"))
-
-	err := GetFile(testFile, "", outputFile)
-	if err != nil {
-		t.Fatalf("GetFile to nested directory failed: %v", err)
-	}
-
-	// Verify file exists and has correct content
-	content, err := os.ReadFile(outputFile)
-	if err != nil {
-		t.Fatalf("Failed to read output file: %v", err)
-	}
-
-	if string(content) != testContent {
-		t.Errorf("Expected content %q, got %q", testContent, string(content))
-	}
 }

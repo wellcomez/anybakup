@@ -46,13 +46,14 @@ import (
 // C-exportable wrapper for GetFileLog
 //
 //export GetFileLogC
-func GetFileLogC(filePath *C.char) *C.GitChangeArray {
+func GetFileLogC(profilename *C.char, filePath *C.char) *C.GitChangeArray {
 	if filePath == nil {
 		return nil
 	}
-
+	goProfilename := C.GoString(profilename)
 	goFilePath := C.GoString(filePath)
-	logs, err := cmd.GetFileLog(goFilePath)
+	g := cmd.NewGitCmd(goProfilename)
+	logs, err := g.GetFileLog(util.RepoPath(goFilePath))
 	if err != nil {
 		return nil
 	}
@@ -153,8 +154,9 @@ func GetFileLogC(filePath *C.char) *C.GitChangeArray {
 // C-exportable wrapper for GetAllOpt
 //
 //export GetAllOptC
-func GetAllOptC() *C.FileOperationArray {
-	operations, err := cmd.GetAllOpt()
+func GetAllOptC(profilename *C.char) *C.FileOperationArray {
+	g := cmd.NewGitCmd(C.GoString(profilename))
+	operations, err := cmd.GetAllOpt(g.C)
 	if err != nil {
 		return nil
 	}
@@ -231,18 +233,16 @@ func GetAllOptC() *C.FileOperationArray {
 // C-exportable wrapper for AddFile
 //
 //export RmFileC
-func RmFileC(filePath *C.char) C.int {
+func RmFileC(profilename *C.char, filePath *C.char) C.int {
 	if filePath == nil {
-		// return C.CString("error: file path is nil")
 		return -1
 	}
-
 	goFilePath := C.GoString(filePath)
-	err := cmd.RmFile(util.RepoPath(goFilePath))
+	g := cmd.NewGitCmd(C.GoString(profilename))
+	err := g.RmFile(util.RepoPath(goFilePath))
 	if err != nil {
 		fmt.Printf("RmFileC failed %v err=%v", goFilePath, err)
 		return -2
-		// return C.CString(fmt.Sprintf("error: %v", err))
 	}
 	fmt.Printf("RmFileC success %v", goFilePath)
 	return 0
@@ -251,43 +251,51 @@ func RmFileC(filePath *C.char) C.int {
 // C-exportable wrapper for AddFile
 //
 //export AddFileC
-func AddFileC(filePath *C.char) C.int {
+func AddFileC(profilename *C.char, filePath *C.char) C.int {
 	if filePath == nil {
-		// return C.CString("error: file path is nil")
 		return -1
 	}
-
 	goFilePath := C.GoString(filePath)
-	result := cmd.AddFile(goFilePath)
+	g := cmd.NewGitCmd(C.GoString(profilename))
+	result := g.AddFile(goFilePath)
 	if result.Err != nil {
 		return -2
-		// return C.CString(fmt.Sprintf("error: %v", result.Err))
 	}
-
 	return 0
+}
+
+// C-exportable wrapper for GitInitC
+//
+//export GitInitC
+func GitInitC(profilename *C.char, filePath *C.char) C.int {
+	if filePath == nil {
+		return -1
+	}
+	goFilePath := C.GoString(filePath)
+	goProfileName := C.GoString(profilename)
+	if _,err := cmd.GitInitProfile(goProfileName, goFilePath); err == nil {
+		return 0
+	} else {
+		return -1
+	}
 }
 
 // C-exportable wrapper for GetFile
 //
 //export GetFileC
-func GetFileC(filePath *C.char, commit *C.char, target *C.char) C.int {
+func GetFileC(profilename *C.char, filePath *C.char, commit *C.char, target *C.char) C.int {
 	if filePath == nil || target == nil {
 		return -1
-		// C.CString("error: file path or target is nil")
 	}
-
 	goFilePath := C.GoString(filePath)
 	goCommit := C.GoString(commit)
 	goTarget := C.GoString(target)
-
-	err := cmd.GetFile(goFilePath, goCommit, goTarget)
+	g := cmd.NewGitCmd(C.GoString(profilename))
+	err := g.GetFile(goFilePath, goCommit, goTarget)
 	if err != nil {
 		return -2
-		// return C.CString(fmt.Sprintf("error: %v", err))
 	}
-
 	return 0
-	// C.CString("success: file retrieved")
 }
 
 // Helper function to free C strings

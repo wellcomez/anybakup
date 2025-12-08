@@ -9,10 +9,11 @@ import (
 
 	"github.com/go-git/go-git/v6"
 	"github.com/go-git/go-git/v6/plumbing/object"
+	// "github.com/stretchr/testify/assert"
 )
 
 // setupGitTestEnv creates a temporary test environment with config and git repo
-func setupGitTestEnv(t *testing.T) (repoDir string, cleanup func()) {
+func setupGitTestEnv(t *testing.T) (repoDir string, config *Config, cleanup func()) {
 	// Create temporary directories
 	tmpDir, err := os.MkdirTemp("", "anybakup-git-test-*")
 	if err != nil {
@@ -45,16 +46,16 @@ func setupGitTestEnv(t *testing.T) (repoDir string, cleanup func()) {
 		os.RemoveAll(tmpDir)
 	}
 
-	return repoDir, cleanup
+	return repoDir, &Config{RepoDir: RepoRoot(repoDir)}, cleanup
 }
 
 // TestInitgit tests initializing a git repository
 func TestInitgit(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
 	// Initialize git repo
-	_, err := NewGitReop()
+	_, err := NewGitReop(c)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
@@ -77,11 +78,11 @@ func TestInitgit(t *testing.T) {
 
 // TestGitAddFile tests adding and committing a file
 func TestGitRmFile(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	r, newVar := setupAddFile(t, repoDir)
-	if ret, err := r.GitRmFile(newVar); err != nil {
+	r, gitpath := setupAddFile(t, repoDir, c)
+	if ret, err := r.GitRmFile(gitpath); err != nil {
 		t.Fatalf("GitRmFile failed: %v", err)
 	} else if ret.Action != GitResultTypeRm {
 		t.Errorf("Expected GitResultRm, got %v", ret)
@@ -89,7 +90,7 @@ func TestGitRmFile(t *testing.T) {
 		t.Errorf("Expected 1 file, got %v", ret)
 	}
 
-	if ret, err := r.GitRmFile(newVar); err != nil {
+	if ret, err := r.GitRmFile(gitpath); err != nil {
 		t.Fatalf("GitRmFile failed: %v", err)
 	} else if ret.Action != GitResultTypeNochange {
 		t.Errorf("Expected GitResultRm, got %v", ret)
@@ -99,8 +100,8 @@ func TestGitRmFile(t *testing.T) {
 
 }
 
-func setupAddFile(t *testing.T, repoDir string) (*GitRepo, RepoPath) {
-	r, err := NewGitReop()
+func setupAddFile(t *testing.T, repoDir string, c *Config) (*GitRepo, RepoPath) {
+	r, err := NewGitReop(c)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
@@ -151,10 +152,10 @@ func setupAddFile(t *testing.T, repoDir string) (*GitRepo, RepoPath) {
 	return r, newVar
 }
 func TestGitAddDir(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	r, err := NewGitReop()
+	r, err := NewGitReop(c)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
@@ -224,10 +225,10 @@ func TestGitAddDir(t *testing.T) {
 
 // TestGitAddFile tests adding and committing a file
 func TestGitAddFile(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	r, err := NewGitReop()
+	r, err := NewGitReop(c)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
@@ -289,10 +290,10 @@ func TestGitAddFile(t *testing.T) {
 
 // TestGitAddFile_MultipleFiles tests adding multiple files
 func TestGitAddFile_MultipleFiles(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	r, err := NewGitReop()
+	r, err := NewGitReop(c)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
@@ -345,10 +346,10 @@ func TestGitAddFile_MultipleFiles(t *testing.T) {
 
 // TestGitAddFile_Subdirectory tests adding a file in a subdirectory
 func TestGitAddFile_Subdirectory(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	r, err := NewGitReop()
+	r, err := NewGitReop(c)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
@@ -405,10 +406,10 @@ func TestGitAddFile_Subdirectory(t *testing.T) {
 
 // TestGitDiffFile tests checking file differences
 func TestGitDiffFile(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	r, err := NewGitReop()
+	r, err := NewGitReop(c)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
@@ -458,10 +459,10 @@ func TestGitDiffFile(t *testing.T) {
 
 // TestGitDiffFile_NewFile tests diff for a new file not in HEAD
 func TestGitDiffFile_NewFile(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	r, err := NewGitReop()
+	r, err := NewGitReop(c)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
@@ -499,10 +500,10 @@ func TestGitDiffFile_NewFile(t *testing.T) {
 
 // TestGitChangesFile tests getting commit history for a file
 func TestGitChangesFile(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	r, err := NewGitReop()
+	r, err := NewGitReop(c)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
@@ -583,10 +584,10 @@ func TestGitChangesFile(t *testing.T) {
 
 // TestGitChangesFile_NoCommits tests getting history for a file with no commits
 func TestGitChangesFile_NoCommits(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	r, err := NewGitReop()
+	r, err := NewGitReop(c)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
@@ -620,7 +621,7 @@ func TestGitChangesFile_NoCommits(t *testing.T) {
 
 // TestGitStatusFile tests checking git status
 func TestGitStatusFile(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
 	// Initialize git repo
@@ -635,11 +636,11 @@ func TestGitStatusFile(t *testing.T) {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
+	r, _ := NewGitReop(c)
 	// Add the file
-	if _, err := GetStateStage(testFile, nil); err != nil {
+	if _, err := r.GetStateStage(testFile); err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
-	r, _ := NewGitReop()
 	gitapth := r.AbsRepo2Repo(testFile)
 	if _, err := r.GitAddFile(gitapth); err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
@@ -654,7 +655,7 @@ func TestGitStatusFile(t *testing.T) {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
-	if s, err := GetStateWorkTree(testFile, nil); err != nil {
+	if s, err := r.GetStateWorkTree(testFile); err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	} else if s != GitModified {
 		t.Fatalf("GitAddFile failed: %v", err)
@@ -662,12 +663,12 @@ func TestGitStatusFile(t *testing.T) {
 	if _, err := r.GitAddFile(gitapth); err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
-	if s, err := GetStateWorkTree(testFile, nil); err != nil {
+	if s, err := r.GetStateWorkTree(testFile); err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	} else if s != GitUntracked {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
-	if s, err := GetStateStage(testFile, nil); err != nil {
+	if s, err := r.GetStateStage(testFile); err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	} else if s != GitUntracked {
 		t.Fatalf("GitAddFile failed: %v", err)
@@ -675,12 +676,12 @@ func TestGitStatusFile(t *testing.T) {
 	if _, err := r.GitAddFile(gitapth); err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
-	if s, err := GetStateWorkTree(testFile, nil); err != nil {
+	if s, err := r.GetStateWorkTree(testFile); err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	} else if s != GitUntracked {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
-	if s, err := GetStateStage(testFile, nil); err != nil {
+	if s, err := r.GetStateStage(testFile); err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	} else if s != GitUntracked {
 		t.Fatalf("GitAddFile failed: %v", err)
@@ -698,12 +699,12 @@ func TestGitStatusFile(t *testing.T) {
 	if _, err := r.GitRmFile(gitapth); err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
-	if s, err := GetStateWorkTree(testFile, nil); err != nil {
+	if s, err := r.GetStateWorkTree(testFile); err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	} else if s != GitUntracked {
 		t.Fatalf("GitAddFile failed: %v", err)
 	}
-	if s, err := GetStateStage(testFile, nil); err != nil {
+	if s, err := r.GetStateStage(testFile); err != nil {
 		t.Fatalf("GitAddFile failed: %v", err)
 	} else if s != GitUntracked {
 		t.Fatalf("GitAddFile failed: %v", err)
@@ -712,10 +713,10 @@ func TestGitStatusFile(t *testing.T) {
 
 // TestGitViewFile tests checking out a file from a specific commit
 func TestGitViewFile(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	r, err := NewGitReop()
+	r, err := NewGitReop(c)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
@@ -806,10 +807,10 @@ func TestGitViewFile(t *testing.T) {
 
 // TestGitViewFile_InvalidCommit tests error handling for invalid commit hash
 func TestGitViewFile_InvalidCommit(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	r, err := NewGitReop()
+	r, err := NewGitReop(c)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
@@ -840,10 +841,10 @@ func TestGitViewFile_InvalidCommit(t *testing.T) {
 
 // TestGitViewFile_FileNotInCommit tests error handling when file doesn't exist in commit
 func TestGitViewFile_FileNotInCommit(t *testing.T) {
-	repoDir, cleanup := setupGitTestEnv(t)
+	repoDir, c, cleanup := setupGitTestEnv(t)
 	defer cleanup()
 
-	r, err := NewGitReop()
+	r, err := NewGitReop(c)
 	if err != nil {
 		t.Fatalf("NewGitReop failed: %v", err)
 	}
@@ -881,4 +882,151 @@ func TestGitViewFile_FileNotInCommit(t *testing.T) {
 	if !strings.Contains(err.Error(), "not found") {
 		t.Errorf("Expected error message about file not found, got: %v", err)
 	}
+}
+
+// TestCleanEmptyDir tests the CleanEmptyDir function with various scenarios.
+func TestCleanEmptyDir(t *testing.T) {
+	reporoot, c, clean := setupGitTestEnv(t)
+	defer clean()
+	// 使用 afero 模拟文件系统
+	// tmpDir, err := os.MkdirTemp("", "anybakup-git-test-*")
+	// if err!=nil {
+	// 	t.Fatal(err)
+	// }
+	repo, err := NewGitReop(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Run("Non-existent path", func(t *testing.T) {
+		// 测试路径不存在的情况
+		n, err := repo.CleanEmptyDir(filepath.Join(reporoot, "nonexistent"))
+		if len(n) != 0 {
+			t.Fatal("Expected non-zero number of deleted files, got zero", err)
+		}
+	})
+
+	t.Run("Non-empty directory", func(t *testing.T) {
+		// 创建一个非空目录
+		dirPath := filepath.Join(reporoot, "nonempty")
+		os.MkdirAll(dirPath, 0755)
+		os.WriteFile(filepath.Join(dirPath, "file.txt"), []byte("content"), 0644)
+
+		n, err := repo.CleanEmptyDir(dirPath)
+		if len(n) != 0 {
+			t.Fatal("Expected non-zero number of deleted files, got zero", err)
+		}
+	})
+
+	t.Run("Empty directory", func(t *testing.T) {
+		// 创建一个空目录
+		dirPath := filepath.Join(reporoot, "empty")
+		os.MkdirAll(dirPath, 0755)
+
+		n, err := repo.CleanEmptyDir(dirPath)
+		if len(n) != 1 {
+			t.Fatal("Expected non-zero number of deleted files, got zero", err)
+		}
+	})
+	t.Run("Empty directory 2", func(t *testing.T) {
+		// 创建一个空目录
+		dirPath := filepath.Join(reporoot, "empty")
+		os.MkdirAll(dirPath, 0755)
+
+		if dirPath := filepath.Join(reporoot, "empty", "empty2"); os.MkdirAll(dirPath, 0755) == nil {
+
+		}
+		n, err := repo.CleanEmptyDir(dirPath)
+		if len(n) != 2 {
+			t.Fatal("Expected non-zero number of deleted files, got zero", err)
+		}
+	})
+	t.Run("test git", func(t *testing.T) {
+		// 创建一个空目录
+		dirPath := filepath.Join(reporoot, "empty")
+		os.MkdirAll(dirPath, 0755)
+
+		if dirPath := filepath.Join(reporoot, "empty", "empty2"); os.MkdirAll(dirPath, 0755) == nil {
+
+		}
+		if dirPath := filepath.Join(reporoot, "empty", ".git"); os.MkdirAll(dirPath, 0755) == nil {
+
+		}
+		n, err := repo.CleanEmptyDir(dirPath)
+		if len(n) != 1 {
+			t.Fatal("Expected non-zero number of deleted files, got zero", err)
+		}
+	})
+	t.Run("child not empty", func(t *testing.T) {
+		// 创建一个空目录
+		dirPath := filepath.Join(reporoot, "empty")
+		os.MkdirAll(dirPath, 0755)
+
+		if dirPath := filepath.Join(reporoot, "empty", "empty2"); os.MkdirAll(dirPath, 0755) == nil {
+			if eerr := os.WriteFile(filepath.Join(dirPath, "1.txt"), []byte("content"), 0644); eerr != nil {
+				t.Fatal(eerr)
+			}
+		}
+
+		n, err := repo.CleanEmptyDir(dirPath)
+		if len(n) != 0 {
+			t.Fatal("Expected non-zero number of deleted files, got zero", err)
+		}
+	})
+
+	t.Run("cascading empty directories", func(t *testing.T) {
+		// Create a nested empty directory structure: parent/child/grandchild
+		parentDir := filepath.Join(reporoot, "parent")
+		childDir := filepath.Join(parentDir, "child")
+		grandchildDir := filepath.Join(childDir, "grandchild")
+
+		// Create the nested empty directories
+		if err := os.MkdirAll(grandchildDir, 0755); err != nil {
+			t.Fatal(err)
+		}
+
+		// Verify all directories exist before cleaning
+		if _, err := os.Stat(parentDir); err != nil {
+			t.Fatal("Parent directory should exist before cleaning")
+		}
+		if _, err := os.Stat(childDir); err != nil {
+			t.Fatal("Child directory should exist before cleaning")
+		}
+		if _, err := os.Stat(grandchildDir); err != nil {
+			t.Fatal("Grandchild directory should exist before cleaning")
+		}
+
+		// Run CleanEmptyDir - this should delete grandchild, child, and parent (all are empty)
+		n, err := repo.CleanEmptyDir(parentDir)
+		if err != nil {
+			t.Fatalf("CleanEmptyDir failed: %v", err)
+		}
+
+		// Should have deleted 3 directories: parent, child, and grandchild
+		if len(n) != 3 {
+			t.Fatalf("Expected 3 deleted directories, got %d", len(n))
+		}
+
+		// Verify all nested directories have been deleted
+		if _, err := os.Stat(parentDir); !os.IsNotExist(err) {
+			t.Fatal("Parent directory should have been deleted")
+		}
+		if _, err := os.Stat(childDir); !os.IsNotExist(err) {
+			t.Fatal("Child directory should have been deleted")
+		}
+		if _, err := os.Stat(grandchildDir); !os.IsNotExist(err) {
+			t.Fatal("Grandchild directory should have been deleted")
+		}
+	})
+	// t.Run("File path", func(t *testing.T) {
+	// 	// 创建一个文件
+	// 	filePath := filepath.Join(reporoot, "file.txt")
+	// 	os.WriteFile(filePath, []byte("content"), 0644)
+
+	// 	err := repo.CleanEmptyDir(filePath)
+	// 	assert.NoError(t, err)
+	// 	if _, err = os.Stat(filePath); err != nil {
+	// 		t.Fatal(err)
+	// 	}
+	// })
+
 }

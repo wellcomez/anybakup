@@ -31,11 +31,7 @@ func CheckStatus(git *git.Repository) (git.Status, error) {
 	return status, nil
 }
 
-func GetStateStage(file string, repo *GitRepo) (StatusCode, error) {
-	if repo == nil {
-		r, _ := NewGitReop()
-		repo = r
-	}
+func (repo *GitRepo) GetStateStage(file string) (StatusCode, error) {
 	if r, err := repo.Status(RepoPath(repo.AbsRepo2Repo(file).Sting())); err != nil {
 		return GitStatusErro, err
 	} else {
@@ -43,11 +39,11 @@ func GetStateStage(file string, repo *GitRepo) (StatusCode, error) {
 	}
 }
 
-func GetStateWorkTree(file string, repo *GitRepo) (StatusCode, error) {
-	if repo == nil {
-		r, _ := NewGitReop()
-		repo = r
-	}
+func (repo *GitRepo) GetStateWorkTree(file string) (StatusCode, error) {
+	// if repo == nil {
+	// 	r, _ := NewGitReop()
+	// 	repo = r
+	// }
 	if r, err := repo.Status(repo.AbsRepo2Repo(file)); err != nil {
 		return GitStatusErro, err
 	} else {
