@@ -6,19 +6,25 @@ BINARY_NAME := anybakup
 BUILD_DIR := build
 MAIN_PATH := .
 
-# Detect OS
-UNAME_S := $(shell uname -s)
-ifeq ($(OS),Windows_NT)
+# Detect OS - Windows compatible
+ifdef ComSpec
     DETECTED_OS := Windows
 else
-    DETECTED_OS := $(UNAME_S)
+    UNAME_S := $(shell uname -s 2>/dev/null)
+    ifeq ($(OS),Windows_NT)
+        DETECTED_OS := Windows
+    else
+        DETECTED_OS := $(UNAME_S)
+    endif
 endif
 
 # Cross-platform compatible version commands
 ifeq ($(DETECTED_OS),Windows)
+    # Try git commands first, fallback to defaults if not available
     VERSION := $(shell git describe --tags --always --dirty 2>nul || echo v0.0.0)
     COMMIT_HASH := $(shell git rev-parse --short HEAD 2>nul || echo unknown)
-    BUILD_TIME := $(shell powershell -Command "Get-Date -UFormat %%Y-%%m-%%dT%%H:%%M:%%SZ")
+    # Try PowerShell for timestamp, fallback to simple format
+    BUILD_TIME := $(shell powershell -Command "Get-Date -UFormat %%Y-%%m-%%dT%%H:%%M:%%SZ" 2>nul || echo "2025-01-01T00:00:00Z")
     RM := del /Q
     RMDIR := rmdir /S /Q
     MKDIR := mkdir
@@ -90,12 +96,16 @@ test-linux:
 
 test-windows:
 	@echo "Running tests for Windows..."
-	@set CGO_ENABLED=1
-	@set GOOS=windows
-	@set GOARCH=amd64
-	@set CC=x86_64-w64-mingw32-gcc
-	go test -v -c -o $(BUILD_DIR)/test-windows$(TEST_EXT) ./...
-	@$(BUILD_DIR)/test-windows$(TEST_EXT) -test.v
+	@if [ "$(DETECTED_OS)" = "Windows" ]; then \
+		if command -v powershell.exe >/dev/null 2>&1; then \
+			powershell.exe -ExecutionPolicy Bypass -File "build-windows.ps1" -Task "test"; \
+		else \
+			echo "Error: PowerShell not found"; \
+			exit 1; \
+		fi; \
+	else \
+		go test -v ./...; \
+	fi
 # Run tests with coverage
 coverage:
 	@echo "Running tests with coverage..."
@@ -154,44 +164,51 @@ build-darwin-arm64:
 	GOOS=darwin GOARCH=arm64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 $(MAIN_PATH)
 
 build-windows-amd64:
-	set GOOS=windows
-	set GOARCH=amd64
-	go build -ldflags "-X main.version=dc65b32-dirty -X main.commitHash=dc65b32 -X main.buildTime=%Y-%m-%dT%H:%M:%SZ -s -w" -o build/anybakup-windows-amd64.exe .
+	@echo "Building Windows AMD64 binary..."
+	@if [ "$(DETECTED_OS)" = "Windows" ]; then \
+		if command -v powershell.exe >/dev/null 2>&1; then \
+			powershell.exe -ExecutionPolicy Bypass -File "build-windows.ps1" -Task "exe"; \
+		else \
+			echo "Error: PowerShell not found"; \
+			exit 1; \
+		fi; \
+	else \
+		go build -ldflags "-X main.version=$(VERSION) -X main.commitHash=$(COMMIT_HASH) -X main.buildTime=$(BUILD_TIME) -s -w" -o build/anybakup-windows-amd64.exe .; \
+	fi
 
 # Build for all platforms
 build-all: build-linux-amd64 build-linux-arm64 build-darwin-amd64 build-darwin-arm64 build-windows-amd64 lib
 	@echo "All builds completed!"
 
+# Build all Windows components
+build-windows-all:
+	@if [ "$(DETECTED_OS)" = "Windows" ]; then \
+		echo "Building all Windows components..."; \
+		if command -v powershell.exe >/dev/null 2>&1; then \
+			powershell.exe -ExecutionPolicy Bypass -File "build-windows.ps1" -Task "all"; \
+		else \
+			echo "Error: PowerShell not found"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "Error: build-windows-all is only available on Windows"; \
+		exit 1; \
+	fi
+
 # Build cmd/gitcmd.go as a dynamic library
 lib:
 	@echo "Building gitcmd dynamic library..."
-	@if "$(OS)" == "Windows_NT" $(MAKE) build-windows-lib \
-	else if "$(shell uname)" == "Darwin" $(MAKE) build-darwin-lib \
-	else $(MAKE) build-unix-lib
-	@echo "gitcmd dynamic library build completed!"
-
-build-windows-lib:
-	@echo "Building Windows DLL..."
-	@echo "Checking prerequisites..."
-	@where gcc >nul 2>&1 || (echo "Error: GCC not found. Please install MinGW-w64" && exit /b 1)
-	@if not exist $(BUILD_DIR) mkdir $(BUILD_DIR)
-	@echo "Setting environment variables..."
-	@set CGO_ENABLED=1
-	@set GOOS=windows
-	@set GOARCH=amd64
-	@set CC=gcc
-	@echo "Building DLL..."
-	$(GO) build -buildmode=c-shared \
-		-ldflags="-s -w" \
-		-o $(BUILD_DIR)/gitcmd$(DLL_EXT) \
-		./cmd/gitcmd-lib
-	@if exist $(BUILD_DIR)\gitcmd$(DLL_EXT) (
-		echo "Successfully built gitcmd$(DLL_EXT)"
-		if exist $(BUILD_DIR)\gitcmd.h echo "Generated header file: gitcmd.h"
-	) else (
-		echo "Error: Failed to build gitcmd$(DLL_EXT)"
-		exit /b 1
-	)
+	@if [ "$(DETECTED_OS)" = "Windows" ]; then \
+		if command -v powershell.exe >/dev/null 2>&1; then \
+			powershell.exe -ExecutionPolicy Bypass -File "build-windows.ps1" -Task "lib"; \
+		else \
+			echo "Error: PowerShell not found"; \
+			exit 1; \
+		fi; \
+	elif [ "$(shell uname 2>/dev/null)" = "Darwin" ]; then $(MAKE) build-darwin-lib; \
+	elif [ "$(shell uname 2>/dev/null | grep -c MINGW 2>/dev/null)" = "1" ]; then $(MAKE) build-unix-lib; \
+	else $(MAKE) build-unix-lib; \
+	fi
 
 
 build-darwin-lib:
@@ -230,12 +247,11 @@ build-unix-lib:
 # Clean test and library artifacts
 clean-lib:
 	@echo "Cleaning library and test artifacts..."
-# 	@$(RMDIR) temp_test 2>/dev/null || true
-ifeq ($(DETECTED_OS),Windows)
-	@$(RM) $(BUILD_DIR)\gitcmd.dll $(BUILD_DIR)\gitcmd.h $(BUILD_DIR)\test_gitcmd$(EXE_EXT) $(BUILD_DIR)\test_gitcmd_real$(EXE_EXT) 2>nul
-else
-	@$(RM) $(BUILD_DIR)/libgitcmd.so $(BUILD_DIR)/libgitcmd.dylib $(BUILD_DIR)/gitcmd.dll $(BUILD_DIR)/gitcmd.h $(BUILD_DIR)/test_gitcmd $(BUILD_DIR)/test_gitcmd_real 2>/dev/null || true
-endif
+	@if [ "$(DETECTED_OS)" = "Windows" ]; then \
+		$(RM) $(BUILD_DIR)/gitcmd.dll $(BUILD_DIR)/gitcmd.h $(BUILD_DIR)/test_gitcmd$(EXE_EXT) $(BUILD_DIR)/test_gitcmd_real$(EXE_EXT) 2>/dev/null || true; \
+	else \
+		$(RM) $(BUILD_DIR)/libgitcmd.so $(BUILD_DIR)/libgitcmd.dylib $(BUILD_DIR)/gitcmd.dll $(BUILD_DIR)/gitcmd.h $(BUILD_DIR)/test_gitcmd $(BUILD_DIR)/test_gitcmd_real 2>/dev/null || true; \
+	fi
 	@echo "Clean completed!"
 
 
@@ -265,10 +281,17 @@ help:
 	@echo "  build-darwin-amd64   - Build for macOS AMD64"
 	@echo "  build-darwin-arm64   - Build for macOS ARM64"
 	@echo "  build-windows-amd64  - Build for Windows AMD64"
+	@echo "  build-windows-all    - Build all Windows components (lib, exe, test)"
 	@echo "  build-all      - Build for all platforms"
 	@echo "  lib            - Build cmd/gitcmd.go as a dynamic library"
+	@echo "  test-windows   - Run Windows tests"
 	@echo "  test-lib       - Build and run C test for the dynamic library"
 	@echo "  test-lib-real  - Build and run C test with real files"
 	@echo "  clean-lib      - Clean library and test artifacts"
 	@echo "  clean-all      - Clean all artifacts including test files"
 	@echo "  help           - Show this help message"
+	@echo ""
+	@echo "Windows build notes:"
+	@echo "  Windows builds use PowerShell script build-windows.ps1"
+	@echo "  Requires MSYS2 with MinGW-w64 for CGO support"
+	@echo "  PowerShell execution policy may need to be adjusted"
