@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-var cfgFile string
+// var cfgFile string
 
 var rootCmd = &cobra.Command{
 	Use:   "anybakup",
@@ -45,6 +45,6 @@ func initConfig() {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		// fmt.Println("Using config file:", viper.ConfigFileUsed())
+		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	}
 }

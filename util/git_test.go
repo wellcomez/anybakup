@@ -67,13 +67,11 @@ func TestInitgit(t *testing.T) {
 	}
 
 	// Verify we can open the repo
-	repo, err := git.PlainOpen(repoDir)
-	if err != nil {
+	if _, err := git.PlainOpen(repoDir); err != nil {
 		t.Fatalf("Failed to open git repo: %v", err)
 	}
 
-	// Verify it's a valid git repository
-	repo.Head()
+	// A new repository has no HEAD until the first commit is made
 }
 
 // TestGitAddFile tests adding and committing a file
@@ -908,8 +906,15 @@ func TestCleanEmptyDir(t *testing.T) {
 	t.Run("Non-empty directory", func(t *testing.T) {
 		// 创建一个非空目录
 		dirPath := filepath.Join(reporoot, "nonempty")
-		os.MkdirAll(dirPath, 0755)
-		os.WriteFile(filepath.Join(dirPath, "file.txt"), []byte("content"), 0644)
+		if err:=os.MkdirAll(dirPath, 0755);err!=nil {
+			t.Fatal(err)
+		}
+		if err:=os.MkdirAll(dirPath, 0755);err!=nil {
+			t.Fatal(err)
+		}
+		if err:=os.WriteFile(filepath.Join(dirPath, "file.txt"), []byte("content"), 0644);err!=nil {
+			t.Fatal(err)
+		}
 
 		n, err := repo.CleanEmptyDir(dirPath)
 		if len(n) != 0 {
@@ -920,7 +925,9 @@ func TestCleanEmptyDir(t *testing.T) {
 	t.Run("Empty directory", func(t *testing.T) {
 		// 创建一个空目录
 		dirPath := filepath.Join(reporoot, "empty")
-		os.MkdirAll(dirPath, 0755)
+		if err:=os.MkdirAll(dirPath, 0755);err!=nil {
+			t.Fatal(err)
+		}
 
 		n, err := repo.CleanEmptyDir(dirPath)
 		if len(n) != 1 {
@@ -930,10 +937,12 @@ func TestCleanEmptyDir(t *testing.T) {
 	t.Run("Empty directory 2", func(t *testing.T) {
 		// 创建一个空目录
 		dirPath := filepath.Join(reporoot, "empty")
-		os.MkdirAll(dirPath, 0755)
+		if err:=os.MkdirAll(dirPath, 0755);err!=nil {
+			t.Fatal(err)
+		}
 
-		if dirPath := filepath.Join(reporoot, "empty", "empty2"); os.MkdirAll(dirPath, 0755) == nil {
-
+		if err := os.MkdirAll(filepath.Join(reporoot, "empty", "empty2"), 0755); err != nil {
+			t.Fatal(err)
 		}
 		n, err := repo.CleanEmptyDir(dirPath)
 		if len(n) != 2 {
@@ -943,13 +952,15 @@ func TestCleanEmptyDir(t *testing.T) {
 	t.Run("test git", func(t *testing.T) {
 		// 创建一个空目录
 		dirPath := filepath.Join(reporoot, "empty")
-		os.MkdirAll(dirPath, 0755)
-
-		if dirPath := filepath.Join(reporoot, "empty", "empty2"); os.MkdirAll(dirPath, 0755) == nil {
-
+		if err:=os.MkdirAll(dirPath, 0755);err!=nil {
+		   t.Fatal(err) 
 		}
-		if dirPath := filepath.Join(reporoot, "empty", ".git"); os.MkdirAll(dirPath, 0755) == nil {
 
+		if dirPath := filepath.Join(reporoot, "empty", "empty2"); os.MkdirAll(dirPath, 0755) != nil {
+			t.Fatal(err)
+		}
+		if dirPath := filepath.Join(reporoot, "empty", ".git"); os.MkdirAll(dirPath, 0755) != nil {
+			t.Fatal(err)
 		}
 		n, err := repo.CleanEmptyDir(dirPath)
 		if len(n) != 1 {
@@ -959,7 +970,9 @@ func TestCleanEmptyDir(t *testing.T) {
 	t.Run("child not empty", func(t *testing.T) {
 		// 创建一个空目录
 		dirPath := filepath.Join(reporoot, "empty")
-		os.MkdirAll(dirPath, 0755)
+		if err := os.MkdirAll(dirPath, 0755); err != nil {
+			t.Fatal(err)
+		}
 
 		if dirPath := filepath.Join(reporoot, "empty", "empty2"); os.MkdirAll(dirPath, 0755) == nil {
 			if eerr := os.WriteFile(filepath.Join(dirPath, "1.txt"), []byte("content"), 0644); eerr != nil {

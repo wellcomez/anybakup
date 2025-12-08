@@ -14,7 +14,9 @@ type GitCmd struct {
 
 func NewGitCmd(profilname string) *GitCmd {
 	c := util.Config{}
-	c.Load()
+	if err:=c.Load();err!=nil{
+		fmt.Printf("error loading config\n: %v", err)
+	}
 	if config := c.GetProfile(profilname); config != nil {
 		return &GitCmd{
 			C: config,

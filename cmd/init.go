@@ -54,6 +54,7 @@ var initCmd = &cobra.Command{
 		if ret, err := GitInitProfile(profile, absPath); err != nil {
 			fmt.Printf("Error initializing profile: %v\n", err)
 		} else if ret != nil {
+			fmt.Printf("Initialized profile %s at %v\n", profile, ret)
 		}
 		os.Exit(1)
 	},

@@ -33,7 +33,9 @@ func (r RepoRoot) With(s string) string {
 
 func NewConfig() *Config {
 	ret := Config{}
-	ret.Load()
+	if err:=ret.Load(); err != nil {
+		logrus.Warnf("error loading config: %v", err)
+	}
 	return &ret
 }
 
@@ -71,7 +73,6 @@ func (c *Config) Print() {
 	if err == nil {
 		fmt.Print(string(b))
 	}
-	return
 }
 
 func (c *Config) Load() error {

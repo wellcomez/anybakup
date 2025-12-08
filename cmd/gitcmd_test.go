@@ -56,14 +56,18 @@ func TestAddFile(t *testing.T) {
 	g := NewGitCmd("")
 	g.C = c
 	test1txt := filepath.Join(tmpDir, "1.txt")
-	os.WriteFile(test1txt, []byte("xxx"), 0755)
+	if err := os.WriteFile(test1txt, []byte("xxx"), 0755); err != nil {
+		t.Error("write file error", err)
+	}
 	ret := g.AddFile(test1txt)
 	if ret.Err != nil {
 		t.Error("add file error", ret.Err)
 	}
 
 	if testfilepath := filepath.Join(tmpDir, "a"); os.MkdirAll(testfilepath, 0755) == nil {
-		os.WriteFile(filepath.Join(testfilepath, "1.txt"), []byte("xxx"), 0755)
+		if err:=os.WriteFile(filepath.Join(testfilepath, "1.txt"), []byte("xxx"), 0755);err!=nil{
+			t.Error("write file error", err)
+		}
 		ret := g.AddFile(testfilepath)
 		if ret.Err != nil {
 			t.Error("add file error", ret.Err)
