@@ -198,7 +198,7 @@ jobs:
       with:
         name: gitcmd-${{ matrix.artifact-name }}
         path: |
-          shell: ${{ matrix.build_shell }}
+          build/${{ matrix.lib_name }}
           build/${{ matrix.lib_header }}
 
   # lint:
