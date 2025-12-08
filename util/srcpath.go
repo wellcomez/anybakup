@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"runtime"
-	"strings"
 )
 
 type SrcPath string
@@ -21,10 +20,22 @@ func (s SrcPath) Repo() RepoPath {
 		if runtime.GOOS == "windows" {
 			// Extract drive letter and get relative path within that drive
 			disk := filepath.VolumeName(string(s))
-			rel, err = filepath.Rel(disk+"\\", string(s))
-			if err == nil {
-				disk = strings.Replace(disk, ":", "", -1)
-				rel = fmt.Sprintf("vol%s\\%s", disk, rel)
+			if disk != "" {
+				rel, err = filepath.Rel(disk+"\\", string(s))
+				if err == nil {
+					// Get just the drive letter (without colon)
+					driveLetter := disk[:len(disk)-1]
+					rel = fmt.Sprintf("%s\\%s", driveLetter, rel)
+				}
+			} else {
+				// Handle paths like C:\path where VolumeName returns ""
+				if len(string(s)) > 1 && string(s)[1] == ':' {
+					driveLetter := string(s)[0]
+					rel, err = filepath.Rel(string(s)[:2], string(s))
+					if err == nil {
+						rel = fmt.Sprintf("%c%s", driveLetter, rel[1:]) // Skip the leading backslash
+					}
+				}
 			}
 		} else {
 			rel, err = filepath.Rel("/", string(s))

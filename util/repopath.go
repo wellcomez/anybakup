@@ -32,22 +32,22 @@ func (s RepoPath) ToSrc() SrcPath {
 		return SrcPath("")
 	}
 	if runtime.GOOS == "windows" {
-		//volx/ replace to c:\
 		path := s.Sting()
-		// Check if path starts with "vol" prefix (e.g., "volc\path\to\file")
-		if strings.HasPrefix(path, "vol") && len(path) > 3 {
-			// Extract drive letter (the character after "vol")
-			driveLetter := string(path[3])
-			// Get the rest of the path after "vol<letter>\"
-			restOfPath := ""
-			if len(path) > 5 && (path[4] == '\\' || path[4] == '/') {
-				restOfPath = path[5:]
-			} else if len(path) > 4 {
-				restOfPath = path[4:]
-			}
-			// Reconstruct as "X:\path\to\file"
-			return SrcPath(driveLetter + ":\\" + restOfPath)
+
+		// Handle drive letter format (e.g., "c\path\to\file" -> "c:\path\to\file")
+		if len(path) > 1 && path[1] == '\\' {
+			// Path already has backslash after drive letter (e.g., "c:\path")
+			return SrcPath(path)
 		}
+		if len(path) > 2 && path[1] == '/' {
+			// Path has forward slash after drive letter (e.g., "c/path" -> "c:\path")
+			return SrcPath(string(path[0]) + ":\\" + path[2:])
+		}
+		if len(path) > 1 && path[0] >= 'a' && path[0] <= 'z' || path[0] >= 'A' && path[0] <= 'Z' {
+			// Single drive letter with path (e.g., "c\path" -> "c:\path")
+			return SrcPath(string(path[0]) + ":\\" + path[1:])
+		}
+
 		return SrcPath(path)
 	}
 	return SrcPath(filepath.Join("/", s.Sting()))
