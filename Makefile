@@ -84,9 +84,6 @@ test:
 	@echo "Running tests..."
 	$(GO) test -v ./...
 	@echo "Tests completed!"
-	@if "$(OS)" == "Windows_NT" $(MAKE) test-windows\
-	else if "$(shell uname)" == "Darwin" $(MAKE) test-darwin\
-	else $(MAKE) test-linux
 
 test-darwin:
 	$(GO) test -v ./...
