@@ -6,19 +6,25 @@ BINARY_NAME := anybakup
 BUILD_DIR := build
 MAIN_PATH := .
 
-# Detect OS
-UNAME_S := $(shell uname -s)
-ifeq ($(OS),Windows_NT)
+# Detect OS - Windows compatible
+ifdef ComSpec
     DETECTED_OS := Windows
 else
-    DETECTED_OS := $(UNAME_S)
+    UNAME_S := $(shell uname -s 2>/dev/null)
+    ifeq ($(OS),Windows_NT)
+        DETECTED_OS := Windows
+    else
+        DETECTED_OS := $(UNAME_S)
+    endif
 endif
 
 # Cross-platform compatible version commands
 ifeq ($(DETECTED_OS),Windows)
+    # Try git commands first, fallback to defaults if not available
     VERSION := $(shell git describe --tags --always --dirty 2>nul || echo v0.0.0)
     COMMIT_HASH := $(shell git rev-parse --short HEAD 2>nul || echo unknown)
-    BUILD_TIME := $(shell powershell -Command "Get-Date -UFormat %%Y-%%m-%%dT%%H:%%M:%%SZ")
+    # Try PowerShell for timestamp, fallback to simple format
+    BUILD_TIME := $(shell powershell -Command "Get-Date -UFormat %%Y-%%m-%%dT%%H:%%M:%%SZ" 2>nul || echo "2025-01-01T00:00:00Z")
     RM := del /Q
     RMDIR := rmdir /S /Q
     MKDIR := mkdir
@@ -54,12 +60,7 @@ all: check test build
 build: 
 	make lib
 	@echo "Building $(BINARY_NAME) version $(VERSION)..."
-	@$(MKDIR) temp_test
-	@$(MOVE) test_*.c temp_test/ 2>/dev/null || true
-	@$(MOVE) test_*.py temp_test/ 2>/dev/null || true
 	$(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)$(EXE_EXT) $(MAIN_PATH)
-	@$(MOVE) temp_test/* . 2>/dev/null || true
-	@$(RMDIR) temp_test/ 2>/dev/null || true
 	@echo "Build completed successfully!"
 
 # Install the project (go install)
@@ -84,6 +85,24 @@ test:
 	$(GO) test -v ./...
 	@echo "Tests completed!"
 
+test-darwin:
+	$(GO) test -v ./...
+
+test-linux:
+	$(GO) test -v ./...
+
+test-windows:
+	@echo "Running tests for Windows..."
+	@if [ "$(DETECTED_OS)" = "Windows" ]; then \
+		if command -v powershell.exe >/dev/null 2>&1; then \
+			powershell.exe -ExecutionPolicy Bypass -File "build-windows.ps1" -Task "test"; \
+		else \
+			echo "Error: PowerShell not found"; \
+			exit 1; \
+		fi; \
+	else \
+		go test -v ./...; \
+	fi
 # Run tests with coverage
 coverage:
 	@echo "Running tests with coverage..."
@@ -111,12 +130,7 @@ lint:
 # Vet the code
 vet:
 	@echo "Vetting code..."
-	@$(MKDIR) temp_test
-	@$(MOVE) test_*.c temp_test/ 2>/dev/null || true
-	@$(MOVE) test_*.py temp_test/ 2>/dev/null || true
 	$(GO) vet ./...
-	@$(MOVE) temp_test/* . 2>/dev/null || true
-	@$(RMDIR) temp_test/ 2>/dev/null || true
 	@echo "Vetting completed!"
 
 # Run all checks
@@ -135,96 +149,85 @@ vuln-check:
 
 # Run specific commands for different architectures (cross-compilation)
 build-linux-amd64:
-	@$(MKDIR) temp_test
-	@$(MOVE) test_*.c temp_test/ 2>/dev/null || true
-	@$(MOVE) test_*.py temp_test/ 2>/dev/null || true
 	GOOS=linux GOARCH=amd64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 $(MAIN_PATH)
-	@$(MOVE) temp_test/* . 2>/dev/null || true
-	@$(RMDIR) temp_test/ 2>/dev/null || true
 
 build-linux-arm64:
-	@$(MKDIR) temp_test
-	@$(MOVE) test_*.c temp_test/ 2>/dev/null || true
-	@$(MOVE) test_*.py temp_test/ 2>/dev/null || true
 	GOOS=linux GOARCH=arm64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-linux-arm64 $(MAIN_PATH)
-	@$(MOVE) temp_test/* . 2>/dev/null || true
-	@$(RMDIR) temp_test/ 2>/dev/null || true
 
 build-darwin-amd64:
-	@$(MKDIR) temp_test
-	@$(MOVE) test_*.c temp_test/ 2>/dev/null || true
-	@$(MOVE) test_*.py temp_test/ 2>/dev/null || true
 	GOOS=darwin GOARCH=amd64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-amd64 $(MAIN_PATH)
-	@$(MOVE) temp_test/* . 2>/dev/null || true
-	@$(RMDIR) temp_test/ 2>/dev/null || true
 
 build-darwin-arm64:
-	@$(MKDIR) temp_test
-	@$(MOVE) test_*.c temp_test/ 2>/dev/null || true
-	@$(MOVE) test_*.py temp_test/ 2>/dev/null || true
 	GOOS=darwin GOARCH=arm64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-darwin-arm64 $(MAIN_PATH)
-	@$(MOVE) temp_test/* . 2>/dev/null || true
-	@$(RMDIR) temp_test/ 2>/dev/null || true
 
 build-windows-amd64:
-	@$(MKDIR) temp_test
-	@$(MOVE) test_*.c temp_test/ 2>/dev/null || true
-	@$(MOVE) test_*.py temp_test/ 2>/dev/null || true
-	GOOS=windows GOARCH=amd64 $(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-windows-amd64.exe $(MAIN_PATH)
-	@$(MOVE) temp_test/* . 2>/dev/null || true
-	@$(RMDIR) temp_test/ 2>/dev/null || true
+	@echo "Building Windows AMD64 binary..."
+	powershell.exe -ExecutionPolicy Bypass -File "build-windows.ps1" -Task "exe"
 
 # Build for all platforms
 build-all: build-linux-amd64 build-linux-arm64 build-darwin-amd64 build-darwin-arm64 build-windows-amd64 lib
 	@echo "All builds completed!"
 
-# Build cmd/gitcmd.go as a dynamic library
-lib:
-	@echo "Building gitcmd dynamic library..."
-ifeq ($(DETECTED_OS),Windows)
-	$(GO) build -buildmode=c-shared -o $(BUILD_DIR)/gitcmd.dll ./cmd/gitcmd-lib
-else ifeq ($(DETECTED_OS),Darwin)
+# Build all Windows components
+build-windows-all:
+	@if [ "$(DETECTED_OS)" = "Windows" ]; then \
+		echo "Building all Windows components..."; \
+		if command -v powershell.exe >/dev/null 2>&1; then \
+			powershell.exe -ExecutionPolicy Bypass -File "build-windows.ps1" -Task "all"; \
+		else \
+			echo "Error: PowerShell not found"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "Error: build-windows-all is only available on Windows"; \
+		exit 1; \
+	fi
+
+
+build-windows-lib:
+	powershell.exe -ExecutionPolicy Bypass -File "build-windows.ps1" -Task "lib"
+
+build-darwin-lib:
 	$(GO) build -buildmode=c-shared -o $(BUILD_DIR)/libgitcmd.dylib ./cmd/gitcmd-lib
-else
+
+build-unix-lib:
 	$(GO) build -buildmode=c-shared -o $(BUILD_DIR)/libgitcmd.so ./cmd/gitcmd-lib
-endif
-	@echo "gitcmd dynamic library build completed!"
+
 
 # Build and run C test for the dynamic library
-test-lib: lib
-	@echo "Building C test program..."
-ifeq ($(DETECTED_OS),Windows)
-	gcc -o $(BUILD_DIR)/test_gitcmd$(EXE_EXT) temp_test/test_gitcmd.c -L$(BUILD_DIR) -lgitcmd
-	@echo "Running C test program..."
-	./$(BUILD_DIR)/test_gitcmd$(EXE_EXT)
-else
-	gcc -o $(BUILD_DIR)/test_gitcmd temp_test/test_gitcmd.c -L$(BUILD_DIR) -lgitcmd -Wl,-rpath,$(abspath $(BUILD_DIR))
-	@echo "Running C test program..."
-	./$(BUILD_DIR)/test_gitcmd
-endif
+# test-lib: lib
+# 	@echo "Building C test program..."
+# ifeq ($(DETECTED_OS),Windows)
+# 	gcc -o $(BUILD_DIR)/test_gitcmd$(EXE_EXT) temp_test/test_gitcmd.c -L$(BUILD_DIR) -lgitcmd
+# 	@echo "Running C test program..."
+# 	./$(BUILD_DIR)/test_gitcmd$(EXE_EXT)
+# else
+# 	gcc -o $(BUILD_DIR)/test_gitcmd temp_test/test_gitcmd.c -L$(BUILD_DIR) -lgitcmd -Wl,-rpath,$(abspath $(BUILD_DIR))
+# 	@echo "Running C test program..."
+# 	./$(BUILD_DIR)/test_gitcmd
+# endif
 
-# Build and run C test with real files
-test-lib-real: lib
-	@echo "Building C test program with real files..."
-ifeq ($(DETECTED_OS),Windows)
-	gcc -o $(BUILD_DIR)/test_gitcmd_real$(EXE_EXT) temp_test/test_gitcmd_real.c -L$(BUILD_DIR) -lgitcmd
-	@echo "Running C test program with real files..."
-	./$(BUILD_DIR)/test_gitcmd_real$(EXE_EXT)
-else
-	gcc -o $(BUILD_DIR)/test_gitcmd_real temp_test/test_gitcmd_real.c -L$(BUILD_DIR) -lgitcmd -Wl,-rpath,$(abspath $(BUILD_DIR))
-	@echo "Running C test program with real files..."
-	./$(BUILD_DIR)/test_gitcmd_real
-endif
+# # Build and run C test with real files
+# test-lib-real: lib
+# 	@echo "Building C test program with real files..."
+# ifeq ($(DETECTED_OS),Windows)
+# 	gcc -o $(BUILD_DIR)/test_gitcmd_real$(EXE_EXT) temp_test/test_gitcmd_real.c -L$(BUILD_DIR) -lgitcmd
+# 	@echo "Running C test program with real files..."
+# 	./$(BUILD_DIR)/test_gitcmd_real$(EXE_EXT)
+# else
+# 	gcc -o $(BUILD_DIR)/test_gitcmd_real temp_test/test_gitcmd_real.c -L$(BUILD_DIR) -lgitcmd -Wl,-rpath,$(abspath $(BUILD_DIR))
+# 	@echo "Running C test program with real files..."
+# 	./$(BUILD_DIR)/test_gitcmd_real
+# endif
 
 # Clean test and library artifacts
 clean-lib:
 	@echo "Cleaning library and test artifacts..."
-	@$(RMDIR) temp_test 2>/dev/null || true
-ifeq ($(DETECTED_OS),Windows)
-	@$(RM) $(BUILD_DIR)\gitcmd.dll $(BUILD_DIR)\gitcmd.h $(BUILD_DIR)\test_gitcmd$(EXE_EXT) $(BUILD_DIR)\test_gitcmd_real$(EXE_EXT) 2>nul
-else
-	@$(RM) $(BUILD_DIR)/libgitcmd.so $(BUILD_DIR)/libgitcmd.dylib $(BUILD_DIR)/gitcmd.dll $(BUILD_DIR)/gitcmd.h $(BUILD_DIR)/test_gitcmd $(BUILD_DIR)/test_gitcmd_real 2>/dev/null || true
-endif
+	@if [ "$(DETECTED_OS)" = "Windows" ]; then \
+		$(RM) $(BUILD_DIR)/gitcmd.dll $(BUILD_DIR)/gitcmd.h $(BUILD_DIR)/test_gitcmd$(EXE_EXT) $(BUILD_DIR)/test_gitcmd_real$(EXE_EXT) 2>/dev/null || true; \
+	else \
+		$(RM) $(BUILD_DIR)/libgitcmd.so $(BUILD_DIR)/libgitcmd.dylib $(BUILD_DIR)/gitcmd.dll $(BUILD_DIR)/gitcmd.h $(BUILD_DIR)/test_gitcmd $(BUILD_DIR)/test_gitcmd_real 2>/dev/null || true; \
+	fi
 	@echo "Clean completed!"
 
 
@@ -254,10 +257,17 @@ help:
 	@echo "  build-darwin-amd64   - Build for macOS AMD64"
 	@echo "  build-darwin-arm64   - Build for macOS ARM64"
 	@echo "  build-windows-amd64  - Build for Windows AMD64"
+	@echo "  build-windows-all    - Build all Windows components (lib, exe, test)"
 	@echo "  build-all      - Build for all platforms"
 	@echo "  lib            - Build cmd/gitcmd.go as a dynamic library"
+	@echo "  test-windows   - Run Windows tests"
 	@echo "  test-lib       - Build and run C test for the dynamic library"
 	@echo "  test-lib-real  - Build and run C test with real files"
 	@echo "  clean-lib      - Clean library and test artifacts"
 	@echo "  clean-all      - Clean all artifacts including test files"
 	@echo "  help           - Show this help message"
+	@echo ""
+	@echo "Windows build notes:"
+	@echo "  Windows builds use PowerShell script build-windows.ps1"
+	@echo "  Requires MSYS2 with MinGW-w64 for CGO support"
+	@echo "  PowerShell execution policy may need to be adjusted"

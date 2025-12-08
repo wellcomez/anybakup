@@ -286,7 +286,7 @@ func setupAddDir(t *testing.T, dir1 string, g cmd.GitCmd, r *util.GitRepo, conte
 		t.Errorf("Expected GitResultAdd, got %v", ret)
 	}
 	for _, v := range ret.Files {
-		if err := cmd.BakupOptAdd(fmt.Sprintf("/%v", v), v, true, true, g); err != nil {
+		if err := cmd.BakupOptAdd(string(v.ToSrc()), v, true, true, g); err != nil {
 			t.Errorf("Expected GitResultAdd, got %v", ret)
 		}
 	}

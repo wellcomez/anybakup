@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop,win ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -45,6 +45,21 @@ jobs:
         choco install make
         echo "C:\ProgramData\chocolatey\lib\make\tools\install\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
+    - name: Install MSYS2 and GCC (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        # Install MSYS2
+        choco install msys2 -y
+        echo "C:\msys64\ucrt64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "C:\msys64\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+        # Install GCC using MSYS2
+        C:\msys64\usr\bin\bash.exe -lc "pacman -Sy --noconfirm"
+        C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm mingw-w64-ucrt-x86_64-gcc"
+
+        # Verify installation
+        C:\msys64\ucrt64\bin\gcc.exe --version
+
     - name: Install GCC (Linux)
       if: runner.os == 'Linux'
       run: |
@@ -81,18 +96,38 @@ jobs:
           - os: ubuntu-latest
             target: linux-amd64
             artifact-name: linux-amd64
+            lib_target: build-unix-lib
+            lib_name: libgitcmd.so
+            lib_header: libgitcmd.h
+            build_shell: bash
           - os: ubuntu-latest
             target: linux-arm64
             artifact-name: linux-arm64
+            lib_target: build-unix-lib
+            lib_name: libgitcmd.so
+            lib_header: libgitcmd.h
+            build_shell: bash
           - os: macos-latest
             target: darwin-amd64
             artifact-name: darwin-amd64
+            lib_target: build-darwin-lib
+            lib_name: libgitcmd.dylib
+            lib_header: libgitcmd.h
+            build_shell: bash
           - os: macos-latest
             target: darwin-arm64
             artifact-name: darwin-arm64
+            lib_target: build-darwin-lib
+            lib_name: libgitcmd.dylib
+            lib_header: libgitcmd.h
+            build_shell: bash
           - os: windows-latest
             target: windows-amd64
             artifact-name: windows-amd64
+            lib_target: build-windows-lib
+            lib_name: gitcmd.dll
+            lib_header: gitcmd.h
+            build_shell: pwsh
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout code
@@ -119,6 +154,21 @@ jobs:
         choco install make
         echo "C:\ProgramData\chocolatey\lib\make\tools\install\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
+    - name: Install MSYS2 and GCC (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        # Install MSYS2
+        choco install msys2 -y
+        echo "C:\msys64\ucrt64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        echo "C:\msys64\usr\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+        # Install GCC using MSYS2
+        C:\msys64\usr\bin\bash.exe -lc "pacman -Sy --noconfirm"
+        C:\msys64\usr\bin\bash.exe -lc "pacman -S --noconfirm mingw-w64-ucrt-x86_64-gcc"
+
+        # Verify installation
+        C:\msys64\ucrt64\bin\gcc.exe --version
+
     - name: Install GCC (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
@@ -133,11 +183,23 @@ jobs:
       run: make build-${{ matrix.target }}
       shell: bash
 
+    - name: Build library
+      run: make ${{ matrix.lib_target }}
+      shell: bash
+
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:
         name: anybakup-${{ matrix.artifact-name }}
         path: build/anybakup-${{ matrix.target }}*
+
+    - name: Upload library artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: gitcmd-${{ matrix.artifact-name }}
+        path: |
+          build/${{ matrix.lib_name }}
+          build/${{ matrix.lib_header }}
 
   # lint:
   #   name: Lint
