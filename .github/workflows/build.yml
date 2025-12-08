@@ -96,18 +96,38 @@ jobs:
           - os: ubuntu-latest
             target: linux-amd64
             artifact-name: linux-amd64
+            lib_target: build-unix-lib
+            lib_name: libgitcmd.so
+            lib_header: libgitcmd.h
+            build_shell: bash
           - os: ubuntu-latest
             target: linux-arm64
             artifact-name: linux-arm64
+            lib_target: build-unix-lib
+            lib_name: libgitcmd.so
+            lib_header: libgitcmd.h
+            build_shell: bash
           - os: macos-latest
             target: darwin-amd64
             artifact-name: darwin-amd64
+            lib_target: build-darwin-lib
+            lib_name: libgitcmd.dylib
+            lib_header: libgitcmd.h
+            build_shell: bash
           - os: macos-latest
             target: darwin-arm64
             artifact-name: darwin-arm64
+            lib_target: build-darwin-lib
+            lib_name: libgitcmd.dylib
+            lib_header: libgitcmd.h
+            build_shell: bash
           - os: windows-latest
             target: windows-amd64
             artifact-name: windows-amd64
+            lib_target: build-windows-lib
+            lib_name: gitcmd.dll
+            lib_header: gitcmd.h
+            build_shell: pwsh
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout code
@@ -163,9 +183,8 @@ jobs:
       run: make build-${{ matrix.target }}
       shell: bash
 
-    - name: Build library (Windows)
-      if: matrix.os == 'windows-latest'
-      run: make lib
+    - name: Build library
+      run: make ${{ matrix.lib_target }}
       shell: bash
 
     - name: Upload build artifact
@@ -174,14 +193,13 @@ jobs:
         name: anybakup-${{ matrix.artifact-name }}
         path: build/anybakup-${{ matrix.target }}*
 
-    - name: Upload library artifact (Windows)
-      if: matrix.os == 'windows-latest'
+    - name: Upload library artifact
       uses: actions/upload-artifact@v4
       with:
-        name: gitcmd-windows
+        name: gitcmd-${{ matrix.artifact-name }}
         path: |
-          build/gitcmd.dll
-          build/gitcmd.h
+          shell: ${{ matrix.build_shell }}
+          build/${{ matrix.lib_header }}
 
   # lint:
   #   name: Lint

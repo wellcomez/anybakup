@@ -165,16 +165,7 @@ build-darwin-arm64:
 
 build-windows-amd64:
 	@echo "Building Windows AMD64 binary..."
-	@if [ "$(DETECTED_OS)" = "Windows" ]; then \
-		if command -v powershell.exe >/dev/null 2>&1; then \
-			powershell.exe -ExecutionPolicy Bypass -File "build-windows.ps1" -Task "exe"; \
-		else \
-			echo "Error: PowerShell not found"; \
-			exit 1; \
-		fi; \
-	else \
-		go build -ldflags "-X main.version=$(VERSION) -X main.commitHash=$(COMMIT_HASH) -X main.buildTime=$(BUILD_TIME) -s -w" -o build/anybakup-windows-amd64.exe .; \
-	fi
+	powershell.exe -ExecutionPolicy Bypass -File "build-windows.ps1" -Task "exe"
 
 # Build for all platforms
 build-all: build-linux-amd64 build-linux-arm64 build-darwin-amd64 build-darwin-arm64 build-windows-amd64 lib
@@ -195,21 +186,9 @@ build-windows-all:
 		exit 1; \
 	fi
 
-# Build cmd/gitcmd.go as a dynamic library
-lib:
-	@echo "Building gitcmd dynamic library..."
-	@if [ "$(DETECTED_OS)" = "Windows" ]; then \
-		if command -v powershell.exe >/dev/null 2>&1; then \
-			powershell.exe -ExecutionPolicy Bypass -File "build-windows.ps1" -Task "lib"; \
-		else \
-			echo "Error: PowerShell not found"; \
-			exit 1; \
-		fi; \
-	elif [ "$(shell uname 2>/dev/null)" = "Darwin" ]; then $(MAKE) build-darwin-lib; \
-	elif [ "$(shell uname 2>/dev/null | grep -c MINGW 2>/dev/null)" = "1" ]; then $(MAKE) build-unix-lib; \
-	else $(MAKE) build-unix-lib; \
-	fi
 
+build-windows-lib:
+	powershell.exe -ExecutionPolicy Bypass -File "build-windows.ps1" -Task "lib"
 
 build-darwin-lib:
 	$(GO) build -buildmode=c-shared -o $(BUILD_DIR)/libgitcmd.dylib ./cmd/gitcmd-lib
