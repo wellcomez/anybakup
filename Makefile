@@ -6,15 +6,37 @@ BINARY_NAME := anybakup
 BUILD_DIR := build
 MAIN_PATH := .
 
-# Detect OS - Windows compatible
-ifdef ComSpec
-    DETECTED_OS := Windows
-else
-    UNAME_S := $(shell uname -s 2>/dev/null)
-    ifeq ($(OS),Windows_NT)
+# Detect OS using Makefile built-in variables (no shell commands)
+# OSTYPE is available in most Make implementations
+# If not available, fall back to OS environment variable
+ifdef OSTYPE
+    # OSTYPE values: 'msys', 'cygwin', 'windows-gnu', 'linux-gnu', 'darwin*', etc.
+    ifneq (,$(findstring $(OSTYPE),msys cygwin windows-gnu windows32))
         DETECTED_OS := Windows
+    else ifneq (,$(findstring darwin,$(OSTYPE)))
+        DETECTED_OS := Darwin
+    else ifneq (,$(findstring linux,$(OSTYPE)))
+        DETECTED_OS := Linux
     else
-        DETECTED_OS := $(UNAME_S)
+        DETECTED_OS := $(OSTYPE)
+    endif
+else
+    # Fallback to OS environment variable
+    ifdef OS
+        ifeq ($(OS),Windows_NT)
+            DETECTED_OS := Windows
+        else ifneq (,$(findstring $(OS),Windows WINDOWS windows))
+            DETECTED_OS := Windows
+        else ifneq (,$(findstring $(OS),Darwin MAC darwin mac))
+            DETECTED_OS := Darwin
+        else ifneq (,$(findstring $(OS),Linux LINUX linux))
+            DETECTED_OS := Linux
+        else
+            DETECTED_OS := Unknown
+        endif
+    else
+        # Default fallback
+        DETECTED_OS := Unknown
     endif
 endif
 
@@ -56,11 +78,24 @@ GOVULNCHECK := govulncheck
 # Default target
 all: check test build
 
-# Build the project
-build: 
-	make lib
-	@echo "Building $(BINARY_NAME) version $(VERSION)..."
+# Build the project - OS-specific compilation
+build:
+	@echo "Building $(BINARY_NAME) version $(VERSION) for $(DETECTED_OS)..."
+	@echo "Detected OS: $(DETECTED_OS)"
+	@echo "Building OS-specific library components..."
+ifeq ($(DETECTED_OS),Windows)
+	$(MAKE) build-windows-amd64
+	$(MAKE) build-windows-lib
+else ifeq ($(DETECTED_OS),Darwin)
+	$(MAKE) build-darwin-amd64
+	$(MAKE) build-darwin-lib
+else ifeq ($(DETECTED_OS),Linux)
+	$(MAKE) build-linux-amd64
+	$(MAKE) build-unix-lib
+else
+	@echo "Building for unknown OS ($(DETECTED_OS)) - using generic build..."
 	$(GO) build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)$(EXE_EXT) $(MAIN_PATH)
+endif
 	@echo "Build completed successfully!"
 
 # Install the project (go install)
@@ -187,6 +222,21 @@ build-windows-all:
 build-windows-lib:
 	powershell.exe -ExecutionPolicy Bypass -File "build-windows.ps1" -Task "lib"
 
+# Build OS-specific dynamic libraries using existing targets
+lib:
+	@echo "Building dynamic library for $(DETECTED_OS)..."
+ifeq ($(DETECTED_OS),Windows)
+	$(MAKE) build-windows-lib
+else ifeq ($(DETECTED_OS),Darwin)
+	$(MAKE) build-darwin-lib
+else ifeq ($(DETECTED_OS),Linux)
+	$(MAKE) build-unix-lib
+else
+	@echo "Unknown OS: $(DETECTED_OS), cannot build appropriate library"
+	@echo "Please use platform-specific targets: build-darwin-lib, build-unix-lib, build-windows-lib"
+endif
+
+# Legacy platform-specific targets (for backward compatibility)
 build-darwin-lib:
 	$(GO) build -buildmode=c-shared -o $(BUILD_DIR)/libgitcmd.dylib ./cmd/gitcmd-lib
 
@@ -241,7 +291,7 @@ init:
 help:
 	@echo "Available targets:"
 	@echo "  all            - Run check, test, and build (default)"
-	@echo "  build          - Build the binary"
+	@echo "  build          - Build the binary with OS-specific components"
 	@echo "  install        - Install the binary to GOPATH/bin"
 	@echo "  clean          - Remove build artifacts"
 	@echo "  test           - Run tests"
@@ -259,13 +309,20 @@ help:
 	@echo "  build-windows-amd64  - Build for Windows AMD64"
 	@echo "  build-windows-all    - Build all Windows components (lib, exe, test)"
 	@echo "  build-all      - Build for all platforms"
-	@echo "  lib            - Build cmd/gitcmd.go as a dynamic library"
+	@echo "  lib            - Build OS-appropriate dynamic library (Windows/Darwin/Linux)"
 	@echo "  test-windows   - Run Windows tests"
 	@echo "  test-lib       - Build and run C test for the dynamic library"
 	@echo "  test-lib-real  - Build and run C test with real files"
 	@echo "  clean-lib      - Clean library and test artifacts"
 	@echo "  clean-all      - Clean all artifacts including test files"
 	@echo "  help           - Show this help message"
+	@echo ""
+	@echo "OS Detection:"
+	@echo "  Detected OS: $(DETECTED_OS)"
+	@echo "  Build target automatically compiles OS-specific components:"
+	@echo "    - Windows: Uses PowerShell for library build"
+	@echo "    - macOS (Darwin): Builds .dylib dynamic library"
+	@echo "    - Linux: Builds .so shared library"
 	@echo ""
 	@echo "Windows build notes:"
 	@echo "  Windows builds use PowerShell script build-windows.ps1"
