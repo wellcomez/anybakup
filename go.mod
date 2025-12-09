@@ -6,12 +6,12 @@ toolchain go1.24.10
 
 require (
 	github.com/go-git/go-git/v6 v6.0.0-20251128074608-48f817f57805
-	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/afero v1.15.0
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/viper v1.21.0
 	go.yaml.in/yaml/v3 v3.0.4
+	modernc.org/sqlite v1.40.1
 )
 
 require (
@@ -49,5 +49,4 @@ require (
 	modernc.org/libc v1.66.10 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
-	modernc.org/sqlite v1.40.1 // indirect
 )
