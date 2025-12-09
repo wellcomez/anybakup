@@ -40,6 +40,21 @@ else
     endif
 endif
 
+ifeq ($(DETECTED_OS),Unknown)
+    # If OSTYPE detection fails, fallback to uname command
+    UNAME := $(shell uname -s 2>/dev/null)
+    ifeq ($(UNAME),Linux)
+        DETECTED_OS := Linux
+    else ifeq ($(UNAME),Darwin)
+        DETECTED_OS := Darwin
+    else ifneq (,$(findstring CYGWIN,$(UNAME)))
+        DETECTED_OS := Windows
+    else ifneq (,$(findstring MINGW,$(UNAME)))
+        DETECTED_OS := Windows
+    else ifneq (,$(findstring MSYS,$(UNAME)))
+        DETECTED_OS := Windows
+    endif
+endif
 # Cross-platform compatible version commands
 ifeq ($(DETECTED_OS),Windows)
     # Try git commands first, fallback to defaults if not available
