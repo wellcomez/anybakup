@@ -75,6 +75,7 @@ func (s *sqldb) Close() error {
 }
 
 func BakupOptAdd(srcFile string, destFile util.RepoPath, isFile bool, sub bool, g GitCmd) error {
+	destFile = destFile.UnixStyle()
 	revcount := 0
 	if isFile {
 		if count, err := g.GetFileLog(destFile); err != nil {

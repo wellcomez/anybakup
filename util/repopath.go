@@ -7,6 +7,7 @@ import (
 )
 
 type RepoPath string
+
 func (s RepoPath) Sting() string {
 	return string(s)
 }
@@ -21,7 +22,7 @@ func (s RepoPath) PlatformStyle() RepoPath {
 	}
 	return s
 }
-func (s RepoPath) UnitxStyle() RepoPath {
+func (s RepoPath) UnixStyle() RepoPath {
 	if runtime.GOOS == "windows" {
 		return RepoPath(strings.Replace(s.Sting(), "\\", "/", -1))
 	}

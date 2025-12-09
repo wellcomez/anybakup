@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
 	// "runtime"
 	"strings"
 	"time"
@@ -25,7 +26,7 @@ type (
 )
 
 func (r GitRepo) Status(gitfile RepoPath) (GitStatusResult, error) {
-	gitfile = gitfile.UnitxStyle()
+	gitfile = gitfile.UnixStyle()
 	ret := GitStatusResult{Staging: GitStatusErro, Worktree: GitStatusErro, Path: gitfile}
 	if git, err := r.Open(); err != nil {
 		return ret, fmt.Errorf("status file Open %v", err)
@@ -54,10 +55,6 @@ func (r GitRepo) Status(gitfile RepoPath) (GitStatusResult, error) {
 		}
 	}
 }
-
-
-
-
 
 func (r GitRepo) Rel(s string) (string, error) {
 	if !filepath.IsAbs(s) {
@@ -227,7 +224,7 @@ func (r GitRepo) CleanEmptyDir(path string) ([]RepoPath, error) {
 	return n, err
 }
 func (r GitRepo) GitRmFile(realpath RepoPath) (GitResult, error) {
-	realpath = realpath.UnitxStyle()
+	realpath = realpath.UnixStyle()
 	ret := GitResult{
 		Action: GitResultTypeError,
 	}
@@ -312,7 +309,7 @@ const (
 )
 
 func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
-	gitpath = gitpath.UnitxStyle()
+	gitpath = gitpath.UnixStyle()
 	abspath := gitpath.ToAbs(r)
 	// gitfile := gitpath.Sting()
 	ret := GitResult{
@@ -383,7 +380,7 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 }
 
 func (r GitRepo) GitViewFile(gitpath RepoPath, commitHash string, outpath string) (string, error) {
-	gitpath = gitpath.UnitxStyle()
+	gitpath = gitpath.UnixStyle()
 	repo, err := r.Open()
 	if err != nil {
 		return "", fmt.Errorf("git view file: failed to open repo: %v", err)
@@ -522,7 +519,7 @@ type GitChanges struct {
 // GitLogFile retrieves the commit history for a specific file
 // Returns a formatted string with commit logs
 func (r GitRepo) GitLogFile(repoRelPath RepoPath) ([]GitChanges, error) {
-	repoRelPath = repoRelPath.UnitxStyle()
+	repoRelPath = repoRelPath.UnixStyle()
 	repo := r.repo
 	gitfile := repoRelPath.Sting()
 
