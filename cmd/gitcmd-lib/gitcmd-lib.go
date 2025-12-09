@@ -292,7 +292,7 @@ func GetFileC(profilename *C.char, filePath *C.char, commit *C.char, target *C.c
 	goCommit := C.GoString(commit)
 	goTarget := C.GoString(target)
 	g := cmd.NewGitCmd(C.GoString(profilename))
-	err := g.GetFile(goFilePath, goCommit, goTarget)
+	err := g.GetFile(util.RepoPath(goFilePath), goCommit, goTarget)
 	if err != nil {
 		return -2
 	}

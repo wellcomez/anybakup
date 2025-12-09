@@ -172,12 +172,8 @@ func IsFile(file string) (bool, error) {
 }
 
 // GetFile retrieves a file from a specific commit
-func (g GitCmd) GetFile(filePath string, commit string, target string) error {
+func (g GitCmd) GetFile(filePath util.RepoPath, commit string, target string) error {
 	var err error
-	absFilePath, err := filepath.Abs(filePath)
-	if err != nil {
-		return err
-	}
 	repo, err := util.NewGitReop(g.C)
 	if err != nil {
 		return err
@@ -196,7 +192,7 @@ func (g GitCmd) GetFile(filePath string, commit string, target string) error {
 		commit = ref.Hash().String()
 	}
 
-	_, err = repo.GitViewFile(repo.Src2Repo(absFilePath), commit, target)
+	_, err = repo.GitViewFile(filePath, commit, target)
 	if err != nil {
 		return err
 	}

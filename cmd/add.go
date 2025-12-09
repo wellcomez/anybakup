@@ -80,7 +80,7 @@ var getCmd = &cobra.Command{
 				os.Exit(1)
 			}
 		}
-		if err := g.GetFile(filePath, commit, target); err != nil {
+		if err := g.GetFile(util.SrcPath(filePath).Repo(), commit, target); err != nil {
 			fmt.Printf("Error get file %v: [%v]\n", filePath, err)
 			os.Exit(1)
 		} else {

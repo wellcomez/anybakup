@@ -213,6 +213,29 @@ func TestGitAddDir(t *testing.T) {
 			t.Errorf("Expected GitResultAdd, got %v", ret)
 		}
 	}
+	_, err = g.GetFileLog(repodir)
+	if err == nil {
+		t.Errorf("Expected GitResultAdd, got %v", ret)
+	}
+	// if len(logs) != 1 {
+	// 	t.Errorf("Expected GitResultAdd, got %v", ret)
+	// }
+	for _, v := range ret.Files {
+		logs, err := g.GetFileLog(v)
+		if err != nil {
+			t.Errorf("Expected GitResultAdd, got %v", ret)
+		}
+		if len(logs) != 2 {
+			t.Errorf("Expected GitResultAdd, got %v", ret)
+		}
+		for _, h := range logs {
+			target := filepath.Join(tmpDir, h.Commit)
+			if err:=g.GetFile(v, h.Commit, target);err!=nil{
+				t.Errorf("Expected GitResultAdd, got %v", ret)
+			}
+		}
+	}
+
 }
 func TestGitRmDir(t *testing.T) {
 	g, clean := setupTestEnv(t)
@@ -249,11 +272,11 @@ func TestGitRmDir(t *testing.T) {
 	if len(rmret.Files) != 2 {
 		t.Errorf("Expected 2 file, got %v", len(rmret.Files))
 	}
-	if err := cmd.BakupOptRm(repodir,g.C); err != nil {
+	if err := cmd.BakupOptRm(repodir, g.C); err != nil {
 		t.Errorf("Expected GitResultRm, got %v", rmret)
 	}
 	for _, v := range rmret.Files {
-		if err := cmd.BakupOptRm(v,g.C); err != nil {
+		if err := cmd.BakupOptRm(v, g.C); err != nil {
 			t.Errorf("Expected GitResultRm, got %v", rmret)
 		}
 	}
