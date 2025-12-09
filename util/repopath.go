@@ -23,10 +23,7 @@ func (s RepoPath) PlatformStyle() RepoPath {
 	return s
 }
 func (s RepoPath) UnixStyle() RepoPath {
-	if runtime.GOOS == "windows" {
-		return RepoPath(strings.Replace(s.Sting(), "\\", "/", -1))
-	}
-	return s
+	return RepoPath(strings.Replace(s.Sting(), "\\", "/", -1))
 }
 func (s RepoPath) ToSrc() SrcPath {
 	if s.Sting() == "" {
