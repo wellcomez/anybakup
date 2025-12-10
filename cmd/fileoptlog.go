@@ -159,7 +159,8 @@ func GetRepoRoot(repoPath util.RepoPath, srcFile string, c *util.Config) (*FileO
 		return nil, err
 	}
 	for _, op := range parent {
-		if _, err := filepath.Rel(op.SrcFile, srcFile); err == nil {
+		if rel, err := filepath.Rel(op.SrcFile, srcFile); err == nil {
+			fmt.Printf("rel == %v %v\n", rel, op.SrcFile)
 			return &op, nil
 		}
 	}

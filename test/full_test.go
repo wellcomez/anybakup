@@ -57,6 +57,7 @@ func TestGitAddFile(t *testing.T) {
 	}
 
 	tmpDir, _ := os.MkdirTemp("", "anybakup-git-test-*")
+	defer os.RemoveAll(tmpDir)
 	// Initialize git repo
 	// if err := Initgit(); err != nil {
 	// 	t.Fatalf("Initgit failed: %v", err)
@@ -126,6 +127,7 @@ func TestGitAddDir(t *testing.T) {
 		t.Fatalf(" create tmepdir dir: %v", err)
 		return
 	}
+	defer os.RemoveAll(tmpDir)
 	// Initialize git repo
 	// if err := Initgit(); err != nil {
 	// 	t.Fatalf("Initgit failed: %v", err)
@@ -317,11 +319,12 @@ func setupAddDir(t *testing.T, dir1 string, g cmd.GitCmd, r *util.GitRepo, conte
 }
 func TestAddFolder(t *testing.T) {
 	g, cleanup := setupTestEnv(t)
+	defer cleanup()
 	tmpDir, err := os.MkdirTemp("", "anybakup-cmd-test-*")
 	if err != nil {
 		t.Error("temp file error", err)
 	}
-	defer cleanup()
+	defer os.RemoveAll(tmpDir)
 	test1txt := filepath.Join(tmpDir, "1.txt")
 	if err := os.WriteFile(test1txt, []byte("xxx"), 0755); err != nil {
 		t.Error("write file error", err)
@@ -343,8 +346,6 @@ func TestAddFolder(t *testing.T) {
 		fmt.Println(v.DestFile)
 	}
 
-
-
 	if err := os.WriteFile(test2txt, []byte("xxxssss"), 0755); err != nil {
 		t.Error("write file error", err)
 	}
@@ -358,6 +359,38 @@ func TestAddFolder(t *testing.T) {
 	}
 	for _, v := range logs {
 		fmt.Print(v.DestFile)
+	}
+
+}
+
+func TestSqlGetRoot(t *testing.T) {
+	g, cleanup := setupTestEnv(t)
+	defer cleanup()
+	tmpDir, err := os.MkdirTemp("", "anybakup-cmd-test-*")
+	if err != nil {
+		t.Error("temp file error", err)
+	}
+	defer os.RemoveAll(tmpDir)
+	test1 := util.SrcPath(filepath.Join(tmpDir, "1"))
+	if err := os.WriteFile(test1.Sting(), []byte("xxx"), 0644); err != nil {
+		t.Error("write file error", err)
+	}
+	test2 := util.SrcPath(filepath.Join(tmpDir, "2"))
+	if err := os.WriteFile(test2.Sting(), []byte("xxx"), 0644); err != nil {
+		t.Error("write file error", err)
+	}
+	if ret := g.AddFile(tmpDir); ret.Err != nil {
+		t.Error("add file error", err)
+	}
+	if ret, err := cmd.GetRepoRoot(test1.Repo(), test1.Sting(), g.C); err != nil {
+		t.Error("get repo root error", err)
+	} else if ret == nil {
+		t.Error("get repo root error ret==nil", ret)
+	}
+	if ret, err := cmd.GetRepoRoot(test1.Repo(), "z:\\zzz", g.C); err == nil {
+		t.Error("get repo root error", err)
+	} else if ret != nil {
+		t.Error("get repo root error ret!=nil", ret)
 	}
 
 }
