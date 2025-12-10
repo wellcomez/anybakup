@@ -128,6 +128,73 @@ func BakupOptAdd(srcFile string, destFile util.RepoPath, isFile bool, sub bool, 
 
 	return nil
 }
+func GetFile(repoPath util.RepoPath, c *util.Config) (*FileOperation, error) {
+	db, err := NewSqldb(c)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	query := `SELECT id, srcfile, destfile, isfile, revcount, sub, add_time, update_time FROM file_operations where destfile=?`
+
+	rows, err := db.db.Query(query, repoPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query file operations: %v", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var op FileOperation
+		if err := rows.Scan(&op.ID, &op.SrcFile, &op.DestFile, &op.IsFile, &op.RevCount, &op.Sub, &op.AddTime, &op.UpdateTime); err != nil {
+			return nil, fmt.Errorf("failed to scan file operation: %v", err)
+		} else {
+			return &op, nil
+		}
+	}
+	return nil, nil
+}
+func GetRepoRoot(repoPath util.RepoPath, srcFile string, c *util.Config) (*FileOperation, error) {
+	parent, err := getFolderEntry(c)
+	if err != nil {
+		return nil, err
+	}
+	for _, op := range parent {
+		if _, err := filepath.Rel(op.SrcFile, srcFile); err == nil {
+			return &op, nil
+		}
+	}
+	return nil, fmt.Errorf("failed to get file operation: %v", err)
+}
+func getFolderEntry(c *util.Config) ([]FileOperation, error) {
+	db, err := NewSqldb(c)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	query := `SELECT id, srcfile, destfile, isfile, revcount, sub, add_time, update_time FROM file_operations where isfile=false`
+
+	rows, err := db.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query file operations: %v", err)
+	}
+	defer rows.Close()
+
+	var operations []FileOperation
+	for rows.Next() {
+		var op FileOperation
+		err := rows.Scan(&op.ID, &op.SrcFile, &op.DestFile, &op.IsFile, &op.RevCount, &op.Sub, &op.AddTime, &op.UpdateTime)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan file operation: %v", err)
+		}
+		operations = append(operations, op)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating over rows: %v", err)
+	}
+	return operations, nil
+}
 
 func BakupOptRm(file util.RepoPath, c *util.Config) error {
 	db, err := NewSqldb(c)
