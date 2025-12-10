@@ -254,13 +254,16 @@ func RmFileC(profilename *C.char, filePath *C.char) C.int {
 //export AddFileC
 func AddFileC(profilename *C.char, filePath *C.char) C.int {
 	if filePath == nil {
-		return -1
+		return 3
 	}
 	goFilePath := C.GoString(filePath)
 	g := cmd.NewGitCmd(C.GoString(profilename))
 	result := g.AddFile(goFilePath)
 	if result.Err != nil {
-		return -2
+		return 2
+	}
+	if result.Result == util.GitResultTypeNochange {
+		return 1
 	}
 	return 0
 }
@@ -274,7 +277,7 @@ func GitInitC(profilename *C.char, filePath *C.char) C.int {
 	}
 	goFilePath := C.GoString(filePath)
 	goProfileName := C.GoString(profilename)
-	if _,err := cmd.GitInitProfile(goProfileName, goFilePath); err == nil {
+	if _, err := cmd.GitInitProfile(goProfileName, goFilePath); err == nil {
 		return 0
 	} else {
 		return -1
