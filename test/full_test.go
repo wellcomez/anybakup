@@ -382,15 +382,20 @@ func TestSqlGetRoot(t *testing.T) {
 	if ret := g.AddFile(tmpDir); ret.Err != nil {
 		t.Error("add file error", err)
 	}
-	if ret, err := cmd.GetRepoRoot(test1.Repo(), test1.Sting(), g.C); err != nil {
+	if ret, err := cmd.GetRepoRoot(test1.Sting(), g.C); err != nil {
 		t.Error("get repo root error", err)
 	} else if ret == nil {
 		t.Error("get repo root error ret==nil", ret)
 	}
-	if ret, err := cmd.GetRepoRoot(test1.Repo(), "z:\\zzz", g.C); err == nil {
+	if ret, err := cmd.GetRepoRoot("z:\\zzz", g.C); err == nil {
 		t.Error("get repo root error", err)
 	} else if ret != nil {
 		t.Error("get repo root error ret!=nil", ret)
 	}
 
+	test3 := util.SrcPath(filepath.Join(tmpDir, "3"))
+	if err := os.WriteFile(test3.Sting(), []byte("xxx"), 0644); err != nil {
+		t.Error("write file error", err)
+	}
+	g.AddFile(test3.Sting())
 }

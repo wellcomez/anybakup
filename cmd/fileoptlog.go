@@ -115,6 +115,11 @@ func BakupOptAdd(srcFile string, destFile util.RepoPath, isFile bool, sub bool, 
 			return fmt.Errorf("failed to update file operation: %v", err)
 		}
 	} else {
+		if r, _ := GetRepoRoot(srcFile, g.C); r != nil {
+			if isFile{
+				sub = true
+			}
+		}
 		// Insert a new entry
 		insertQuery := `
 		INSERT INTO file_operations (srcfile, destfile, isfile, revcount, sub, add_time, update_time)
@@ -153,7 +158,7 @@ func GetFile(repoPath util.RepoPath, c *util.Config) (*FileOperation, error) {
 	}
 	return nil, nil
 }
-func GetRepoRoot(repoPath util.RepoPath, srcFile string, c *util.Config) (*FileOperation, error) {
+func GetRepoRoot(srcFile string, c *util.Config) (*FileOperation, error) {
 	parent, err := getFolderEntry(c)
 	if err != nil {
 		return nil, err
