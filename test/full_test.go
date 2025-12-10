@@ -230,7 +230,7 @@ func TestGitAddDir(t *testing.T) {
 		}
 		for _, h := range logs {
 			target := filepath.Join(tmpDir, h.Commit)
-			if err:=g.GetFile(v, h.Commit, target);err!=nil{
+			if err := g.GetFile(v, h.Commit, target); err != nil {
 				t.Errorf("Expected GitResultAdd, got %v", ret)
 			}
 		}
@@ -314,4 +314,50 @@ func setupAddDir(t *testing.T, dir1 string, g cmd.GitCmd, r *util.GitRepo, conte
 		}
 	}
 	return repodir
+}
+func TestAddFolder(t *testing.T) {
+	g, cleanup := setupTestEnv(t)
+	tmpDir, err := os.MkdirTemp("", "anybakup-cmd-test-*")
+	if err != nil {
+		t.Error("temp file error", err)
+	}
+	defer cleanup()
+	test1txt := filepath.Join(tmpDir, "1.txt")
+	if err := os.WriteFile(test1txt, []byte("xxx"), 0755); err != nil {
+		t.Error("write file error", err)
+	}
+	test2txt := filepath.Join(tmpDir, "2.txt")
+	if err := os.WriteFile(test2txt, []byte("xxx"), 0755); err != nil {
+		t.Error("write file error", err)
+	}
+	ret := g.AddFile(tmpDir)
+
+	if ret.Err != nil {
+		t.Error("add file error", ret.Err)
+	}
+	logs, err := cmd.GetAllOpt(g.C)
+	if err != nil {
+		t.Error("get log", err)
+	}
+	for _, v := range logs {
+		fmt.Println(v.DestFile)
+	}
+
+
+
+	if err := os.WriteFile(test2txt, []byte("xxxssss"), 0755); err != nil {
+		t.Error("write file error", err)
+	}
+	ret = g.AddFile(test2txt)
+	if ret.Err != nil {
+		t.Error("add file error", ret.Err)
+	}
+	logs, err = cmd.GetAllOpt(g.C)
+	if err != nil {
+		t.Error("get log", err)
+	}
+	for _, v := range logs {
+		fmt.Print(v.DestFile)
+	}
+
 }

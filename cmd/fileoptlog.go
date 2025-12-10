@@ -107,10 +107,10 @@ func BakupOptAdd(srcFile string, destFile util.RepoPath, isFile bool, sub bool, 
 		// Update the existing entry with a new update_time and revcount
 		updateQuery := `
 		UPDATE file_operations
-		SET destfile = ?, isfile = ?, revcount = ?, sub = ?, update_time = CURRENT_TIMESTAMP
+		SET  revcount = ?,  update_time = CURRENT_TIMESTAMP
 		WHERE srcfile = ?`
 
-		_, err = db.db.Exec(updateQuery, destFile, isFile, revcount, sub, srcFile)
+		_, err = db.db.Exec(updateQuery, revcount, srcFile)
 		if err != nil {
 			return fmt.Errorf("failed to update file operation: %v", err)
 		}
