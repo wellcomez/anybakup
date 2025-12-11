@@ -147,7 +147,21 @@ func setupAddFile(t *testing.T, repoDir string, c *Config) (*GitRepo, RepoPath) 
 	if commit.Author.Name != "anybakup" {
 		t.Errorf("Expected author 'anybakup', got %q", commit.Author.Name)
 	}
-	return r, newVar
+	return r,newVar
+}
+
+func add_file(t *testing.T, repoDir string, filename string, content string, r *GitRepo) {
+	testFile := filepath.Join(repoDir, filename)
+	if err := os.WriteFile(testFile, []byte(content), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// Add the file (using relative path from repo root)
+	newVar := r.AbsRepo2Repo(testFile)
+	_, err := r.GitAddFile(newVar)
+	if err != nil {
+		t.Fatalf("GitAddFile failed: %v", err)
+	}
 }
 func TestGitAddDir(t *testing.T) {
 	repoDir, c, cleanup := setupGitTestEnv(t)
@@ -168,6 +182,8 @@ func TestGitAddDir(t *testing.T) {
 	if err := os.MkdirAll(dir1, 0755); err != nil {
 		t.Fatalf("Failed to create dir: %v", err)
 	}
+	add_file(t, repoDir, "test.txt", "test content", r)
+	add_file(t, repoDir, "test2.txt", "test content", r)
 	testFile := filepath.Join(dir1, "test.txt")
 	if err := os.WriteFile(testFile, []byte("test content"), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
