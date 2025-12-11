@@ -111,7 +111,17 @@ func TestGitAddFile(t *testing.T) {
 		}
 	}
 }
-
+func TestToSrc(t *testing.T) {
+	tmpDir := os.TempDir()
+	aaa := util.SrcPath(tmpDir).Repo().UnixStyle()
+	a,err:=util.RepoPath(aaa).ToSrc()
+	if err!=nil{
+		t.Errorf("Expected %v, got %v", tmpDir, err)
+	}
+	if a.String() != tmpDir {
+		t.Errorf("Expected %v, got %v", tmpDir, a.String())
+	}
+}
 func TestGitAddDir(t *testing.T) {
 	g, clean := setupTestEnv(t)
 	repo := g.C.RepoDir
@@ -311,7 +321,11 @@ func setupAddDir(t *testing.T, dir1 string, g cmd.GitCmd, r *util.GitRepo, conte
 		t.Errorf("Expected GitResultAdd, got %v", ret)
 	}
 	for _, v := range ret.Files {
-		if err := cmd.BakupOptAdd(string(v.ToSrc()), v, true, true, g); err != nil {
+		s, err := v.ToSrc()
+		if err != nil {
+			t.Errorf("%v", err)
+		}
+		if err := cmd.BakupOptAdd(string(s), v, true, true, g); err != nil {
 			t.Errorf("Expected GitResultAdd, got %v", ret)
 		}
 	}
@@ -372,17 +386,17 @@ func TestSqlGetRoot(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 	test1 := util.SrcPath(filepath.Join(tmpDir, "1"))
-	if err := os.WriteFile(test1.Sting(), []byte("xxx"), 0644); err != nil {
+	if err := os.WriteFile(test1.String(), []byte("xxx"), 0644); err != nil {
 		t.Error("write file error", err)
 	}
 	test2 := util.SrcPath(filepath.Join(tmpDir, "2"))
-	if err := os.WriteFile(test2.Sting(), []byte("xxx"), 0644); err != nil {
+	if err := os.WriteFile(test2.String(), []byte("xxx"), 0644); err != nil {
 		t.Error("write file error", err)
 	}
 	if ret := g.AddFile(tmpDir); ret.Err != nil {
 		t.Error("add file error", err)
 	}
-	if ret, err := cmd.GetRepoRoot(test1.Sting(), g.C); err != nil {
+	if ret, err := cmd.GetRepoRoot(test1.String(), g.C); err != nil {
 		t.Error("get repo root error", err)
 	} else if ret == nil {
 		t.Error("get repo root error ret==nil", ret)
@@ -394,8 +408,8 @@ func TestSqlGetRoot(t *testing.T) {
 	}
 
 	test3 := util.SrcPath(filepath.Join(tmpDir, "3"))
-	if err := os.WriteFile(test3.Sting(), []byte("xxx"), 0644); err != nil {
+	if err := os.WriteFile(test3.String(), []byte("xxx"), 0644); err != nil {
 		t.Error("write file error", err)
 	}
-	g.AddFile(test3.Sting())
+	g.AddFile(test3.String())
 }

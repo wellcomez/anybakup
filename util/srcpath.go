@@ -8,7 +8,7 @@ import (
 
 type SrcPath string
 
-func (s SrcPath) Sting() string {
+func (s SrcPath) String() string {
 	return string(s)
 }
 func (s SrcPath) Repo() RepoPath {

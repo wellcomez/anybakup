@@ -1,6 +1,7 @@
 package util
 
 import (
+	"fmt"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -25,28 +26,21 @@ func (s RepoPath) PlatformStyle() RepoPath {
 func (s RepoPath) UnixStyle() RepoPath {
 	return RepoPath(strings.Replace(s.Sting(), "\\", "/", -1))
 }
-func (s RepoPath) ToSrc() SrcPath {
+func (s RepoPath) ToSrc() (SrcPath, error) {
 	if s.Sting() == "" {
-		return SrcPath("")
+		return SrcPath(""), nil
+	}
+	if filepath.IsAbs(s.Sting()) {
+		return SrcPath(""), fmt.Errorf("nvalid path: %s", s.Sting())
 	}
 	if runtime.GOOS == "windows" {
-		path := s.Sting()
-
-		// Handle drive letter format (e.g., "c\path\to\file" -> "c:\path\to\file")
-		if len(path) > 1 && path[1] == '\\' {
-			// Path already has backslash after drive letter (e.g., "c:\path")
-			return SrcPath(path)
+		path := filepath.Clean(s.Sting())
+		if strings.Index(path, "\\") == 1 {
+			if len(path) > 1 && path[0] >= 'a' && path[0] <= 'z' || path[0] >= 'A' && path[0] <= 'Z' {
+				return SrcPath(filepath.Clean(string(path[0]) + ":\\" + path[1:])), nil
+			}
 		}
-		if len(path) > 2 && path[1] == '/' {
-			// Path has forward slash after drive letter (e.g., "c/path" -> "c:\path")
-			return SrcPath(string(path[0]) + ":\\" + path[2:])
-		}
-		if len(path) > 1 && path[0] >= 'a' && path[0] <= 'z' || path[0] >= 'A' && path[0] <= 'Z' {
-			// Single drive letter with path (e.g., "c\path" -> "c:\path")
-			return SrcPath(string(path[0]) + ":\\" + path[1:])
-		}
-
-		return SrcPath(path)
+		return SrcPath(""), fmt.Errorf("invalid path: %s",s.Sting())
 	}
-	return SrcPath(filepath.Join("/", s.Sting()))
+	return SrcPath(filepath.Clean(filepath.Join("/", s.Sting()))), nil
 }

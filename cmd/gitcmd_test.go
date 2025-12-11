@@ -133,3 +133,45 @@ func TestAddFile(t *testing.T) {
 	}
 
 }
+
+func TestAddDir(t *testing.T) {
+	_, c, cleanup := setupTestEnv(t)
+	tmpDir, err := os.MkdirTemp("", "anybakup-cmd-test-*")
+	if err != nil {
+		t.Error("temp file error", err)
+	}
+	defer os.RemoveAll(tmpDir)
+	defer cleanup()
+
+	g := NewGitCmd("")
+	g.C = c
+	test1txt := filepath.Join(tmpDir, "1.txt")
+	if err := os.WriteFile(test1txt, []byte("xxx"), 0755); err != nil {
+		t.Error("write file error", err)
+	}
+
+	test2txt := filepath.Join(tmpDir, "2.txt")
+	if err := os.WriteFile(test2txt, []byte("xxx"), 0755); err != nil {
+		t.Error("write file error", err)
+	}
+	dira:= filepath.Join(tmpDir, "a")
+	os.MkdirAll(dira,0755)
+
+	ret := g.AddFile(tmpDir)
+	if ret.Err != nil {
+		t.Error("add file error", ret.Err)
+	}
+
+}
+
+func TestGitFile(t *testing.T) {
+	_, c, cleanup := setupTestEnv(t)
+	defer cleanup()
+	g := NewGitCmd("")
+	g.C = c
+	const test1txt = "E:\\anybakup\\ui\\any\\lib"
+	ret := g.AddFile(test1txt)
+	if ret.Err != nil {
+		t.Error("add file error", ret.Err)
+	}
+}

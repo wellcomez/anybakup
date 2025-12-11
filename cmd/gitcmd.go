@@ -14,7 +14,7 @@ type GitCmd struct {
 
 func NewGitCmd(profilname string) *GitCmd {
 	c := util.Config{}
-	if err:=c.Load();err!=nil{
+	if err := c.Load(); err != nil {
 		fmt.Printf("error loading config\n: %v", err)
 	}
 	if config := c.GetProfile(profilname); config != nil {
@@ -104,7 +104,11 @@ func (g GitCmd) AddFile(arg string) (ret Result_git_add) {
 		}
 		if !isfile {
 			for _, f := range yes.Files {
-				if err := BakupOptAdd(fmt.Sprintf("/%v", f), f, true, true, g); err != nil {
+				src, err := f.ToSrc()
+				if err != nil {
+					fmt.Printf("failed to add sql backup record %v", err)
+				}
+				if err := BakupOptAdd(src.String(), f, true, true, g); err != nil {
 					fmt.Printf("failed to add sql backup record %v", err)
 				} else {
 					fmt.Printf(">>> added to sql %v\n", f)
