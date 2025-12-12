@@ -4,6 +4,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"anybakup/util"
@@ -165,6 +166,9 @@ func TestAddDir(t *testing.T) {
 }
 
 func TestGitFile(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		return
+	}
 	_, c, cleanup := setupTestEnv(t)
 	defer cleanup()
 	g := NewGitCmd("")
