@@ -74,7 +74,7 @@ func (r GitRepo) Rel(s string) (string, error) {
 
 func (conf *GitRepo) CopyToRepo(src SrcPath) (RepoPath, error) {
 	// Verify source exists and get its info
-	srcInfo, err := os.Stat(src.Sting())
+	srcInfo, err := os.Stat(src.String())
 	if err != nil {
 		return "", fmt.Errorf("copytorepo error stat src: %v", err)
 	}
@@ -86,9 +86,9 @@ func (conf *GitRepo) CopyToRepo(src SrcPath) (RepoPath, error) {
 	dest := reporoot.With(ret.Sting())
 	// Copy based on whether src is a file or directory
 	if srcInfo.IsDir() {
-		err = copyDir(src.Sting(), dest)
+		err = copyDir(src.String(), dest)
 	} else {
-		err = copyFile(src.Sting(), dest)
+		err = copyFile(src.String(), dest)
 	}
 
 	if err != nil {
