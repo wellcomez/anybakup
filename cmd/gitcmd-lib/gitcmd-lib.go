@@ -33,6 +33,11 @@ typedef struct {
 	FileOperationC* operations;
 	int count;
 } FileOperationArray;
+
+typedef struct {
+	char** tags;
+	int count;
+} TagArray;
 */
 import "C"
 
@@ -422,6 +427,95 @@ func GetFileTagC(profilename *C.char, filePath *C.char) *C.char {
 	}
 	fmt.Printf("GetFileTagC success %v tag=%v", goFilePath, tag)
 	return C.CString(tag)
+}
+
+// C-exportable wrapper for GetAllTags
+//
+//export GetAllTagsC
+func GetAllTagsC(profilename *C.char) *C.TagArray {
+	g := cmd.NewGitCmd(C.GoString(profilename))
+
+	tags, err := cmd.GetAllTags(g.C)
+	if err != nil {
+		fmt.Printf("GetAllTagsC failed err=%v", err)
+		return nil
+	}
+
+	if len(tags) == 0 {
+		// Return an empty array with count 0
+		array := (*C.TagArray)(C.malloc(C.size_t(unsafe.Sizeof(C.TagArray{}))))
+		if array == nil {
+			return nil
+		}
+		array.tags = nil
+		array.count = 0
+		return array
+	}
+
+	// Allocate memory for an array of C string pointers
+	tagsArray := C.malloc(C.size_t(len(tags)) * C.size_t(unsafe.Sizeof(uintptr(0))))
+	if tagsArray == nil {
+		return nil
+	}
+
+	// Convert each tag to a C string and store pointers in the array
+	for i, tag := range tags {
+		tagPtr := C.CString(tag)
+		if tagPtr == nil {
+			// If allocation fails, free previously allocated strings and memory
+			for j := 0; j < i; j++ {
+				prevTag := (*C.char)(unsafe.Pointer(uintptr(tagsArray) + uintptr(j)*unsafe.Sizeof(uintptr(0))))
+				C.free(unsafe.Pointer(prevTag))
+			}
+			C.free(tagsArray)
+			return nil
+		}
+
+		// Set the pointer at the correct index
+		ptr := (**C.char)(unsafe.Pointer(uintptr(tagsArray) + uintptr(i)*unsafe.Sizeof(uintptr(0))))
+		*ptr = tagPtr
+	}
+
+	// Create the TagArray struct
+	array := (*C.TagArray)(C.malloc(C.size_t(unsafe.Sizeof(C.TagArray{}))))
+	if array == nil {
+		// Free the tags array if struct allocation fails
+		for i := 0; i < len(tags); i++ {
+			ptr := (**C.char)(unsafe.Pointer(uintptr(tagsArray) + uintptr(i)*unsafe.Sizeof(uintptr(0))))
+			C.free(unsafe.Pointer(*ptr))
+		}
+		C.free(tagsArray)
+		return nil
+	}
+
+	array.tags = (**C.char)(tagsArray)
+	array.count = C.int(len(tags))
+
+	return array
+}
+
+// Helper function to free tag array
+//
+//export FreeTagArrayC
+func FreeTagArrayC(tagArray *C.TagArray) {
+	if tagArray == nil {
+		return
+	}
+
+	// Free each string in the tags array
+	if tagArray.tags != nil && tagArray.count > 0 {
+		for i := 0; i < int(tagArray.count); i++ {
+			ptr := (**C.char)(unsafe.Pointer(uintptr(unsafe.Pointer(tagArray.tags)) + uintptr(i)*unsafe.Sizeof(uintptr(0))))
+			if *ptr != nil {
+				C.free(unsafe.Pointer(*ptr))
+			}
+		}
+		// Free the array of string pointers
+		C.free(unsafe.Pointer(tagArray.tags))
+	}
+
+	// Free the TagArray struct itself
+	C.free(unsafe.Pointer(tagArray))
 }
 
 func main() {

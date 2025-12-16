@@ -322,3 +322,38 @@ func GetAllOpt(c *util.Config) ([]FileOperation, error) {
 
 	return operations, nil
 }
+
+func GetAllTags(c *util.Config) ([]string, error) {
+	db, err := NewSqldb(c)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	// Query to get all unique non-empty tags
+	query := `SELECT DISTINCT tag FROM file_operations WHERE tag IS NOT NULL AND tag != '' ORDER BY tag`
+
+	rows, err := db.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query tags: %v", err)
+	}
+	defer rows.Close()
+
+	var tags []string
+	for rows.Next() {
+		var tag sql.NullString
+		err := rows.Scan(&tag)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan tag: %v", err)
+		}
+		if tag.Valid {
+			tags = append(tags, tag.String)
+		}
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating over rows: %v", err)
+	}
+
+	return tags, nil
+}
