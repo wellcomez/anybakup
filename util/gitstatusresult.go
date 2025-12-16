@@ -28,11 +28,11 @@ func (s GitStatus2) String() string {
 
 type GitStatus2 map[string]*FileStatus2
 type GitStatusResult struct {
-	Staging     StatusCode
-	Worktree    StatusCode
-	Status      git.Status
+	Staging  StatusCode
+	Worktree StatusCode
+	Status   git.Status
 	// StatusOrgin git.Status
-	Path        RepoPath
+	Path RepoPath
 }
 
 func (s GitStatusResult) print(preifx string) {

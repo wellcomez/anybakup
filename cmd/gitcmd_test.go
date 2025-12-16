@@ -155,8 +155,10 @@ func TestAddDir(t *testing.T) {
 	if err := os.WriteFile(test2txt, []byte("xxx"), 0755); err != nil {
 		t.Error("write file error", err)
 	}
-	dira:= filepath.Join(tmpDir, "a")
-	os.MkdirAll(dira,0755)
+	dira := filepath.Join(tmpDir, "a")
+	if err := os.MkdirAll(dira, 0755); err != nil {
+		t.Error("mkdir error", err)
+	}
 
 	ret := g.AddFile(tmpDir)
 	if ret.Err != nil {

@@ -40,7 +40,7 @@ func (s RepoPath) ToSrc() (SrcPath, error) {
 				return SrcPath(filepath.Clean(string(path[0]) + ":\\" + path[1:])), nil
 			}
 		}
-		return SrcPath(""), fmt.Errorf("invalid path: %s",s.Sting())
+		return SrcPath(""), fmt.Errorf("invalid path: %s", s.Sting())
 	}
 	return SrcPath(filepath.Clean(filepath.Join("/", s.Sting()))), nil
 }

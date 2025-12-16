@@ -147,7 +147,7 @@ func setupAddFile(t *testing.T, repoDir string, c *Config) (*GitRepo, RepoPath) 
 	if commit.Author.Name != "anybakup" {
 		t.Errorf("Expected author 'anybakup', got %q", commit.Author.Name)
 	}
-	return r,newVar
+	return r, newVar
 }
 
 func add_file(t *testing.T, repoDir string, filename string, content string, r *GitRepo) {
@@ -922,13 +922,13 @@ func TestCleanEmptyDir(t *testing.T) {
 	t.Run("Non-empty directory", func(t *testing.T) {
 		// 创建一个非空目录
 		dirPath := filepath.Join(reporoot, "nonempty")
-		if err:=os.MkdirAll(dirPath, 0755);err!=nil {
+		if err := os.MkdirAll(dirPath, 0755); err != nil {
 			t.Fatal(err)
 		}
-		if err:=os.MkdirAll(dirPath, 0755);err!=nil {
+		if err := os.MkdirAll(dirPath, 0755); err != nil {
 			t.Fatal(err)
 		}
-		if err:=os.WriteFile(filepath.Join(dirPath, "file.txt"), []byte("content"), 0644);err!=nil {
+		if err := os.WriteFile(filepath.Join(dirPath, "file.txt"), []byte("content"), 0644); err != nil {
 			t.Fatal(err)
 		}
 
@@ -941,7 +941,7 @@ func TestCleanEmptyDir(t *testing.T) {
 	t.Run("Empty directory", func(t *testing.T) {
 		// 创建一个空目录
 		dirPath := filepath.Join(reporoot, "empty")
-		if err:=os.MkdirAll(dirPath, 0755);err!=nil {
+		if err := os.MkdirAll(dirPath, 0755); err != nil {
 			t.Fatal(err)
 		}
 
@@ -953,7 +953,7 @@ func TestCleanEmptyDir(t *testing.T) {
 	t.Run("Empty directory 2", func(t *testing.T) {
 		// 创建一个空目录
 		dirPath := filepath.Join(reporoot, "empty")
-		if err:=os.MkdirAll(dirPath, 0755);err!=nil {
+		if err := os.MkdirAll(dirPath, 0755); err != nil {
 			t.Fatal(err)
 		}
 
@@ -968,8 +968,8 @@ func TestCleanEmptyDir(t *testing.T) {
 	t.Run("test git", func(t *testing.T) {
 		// 创建一个空目录
 		dirPath := filepath.Join(reporoot, "empty")
-		if err:=os.MkdirAll(dirPath, 0755);err!=nil {
-		   t.Fatal(err) 
+		if err := os.MkdirAll(dirPath, 0755); err != nil {
+			t.Fatal(err)
 		}
 
 		if dirPath := filepath.Join(reporoot, "empty", "empty2"); os.MkdirAll(dirPath, 0755) != nil {

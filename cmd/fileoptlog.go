@@ -19,6 +19,7 @@ type FileOperation struct {
 	IsFile     bool
 	RevCount   int
 	Sub        bool
+	Tag        string
 	AddTime    time.Time
 	UpdateTime time.Time
 }
@@ -52,6 +53,7 @@ func NewSqldb(c *util.Config) (*sqldb, error) {
 		isfile BOOLEAN NOT NULL,
 		revcount INTEGER DEFAULT 0,
 		sub BOOLEAN DEFAULT FALSE,
+		tag TEXT,
 		add_time DATETIME DEFAULT CURRENT_TIMESTAMP,
 		update_time DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
@@ -116,14 +118,14 @@ func BakupOptAdd(srcFile string, destFile util.RepoPath, isFile bool, sub bool, 
 		}
 	} else {
 		if r, _ := GetRepoRoot(srcFile, g.C); r != nil {
-			if isFile{
+			if isFile {
 				sub = true
 			}
 		}
 		// Insert a new entry
 		insertQuery := `
-		INSERT INTO file_operations (srcfile, destfile, isfile, revcount, sub, add_time, update_time)
-		VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+		INSERT INTO file_operations (srcfile, destfile, isfile, revcount, sub, tag, add_time, update_time)
+		VALUES (?, ?, ?, ?, ?, NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
 
 		_, err = db.db.Exec(insertQuery, srcFile, destFile, isFile, revcount, sub)
 		if err != nil {
@@ -133,6 +135,57 @@ func BakupOptAdd(srcFile string, destFile util.RepoPath, isFile bool, sub bool, 
 
 	return nil
 }
+func SetFileTag(repoPath util.RepoPath, tag string, c *util.Config) error {
+	db, err := NewSqldb(c)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	// Update the tag for the specified file
+	updateQuery := `
+	UPDATE file_operations
+	SET tag = ?
+	WHERE destfile = ?`
+
+	result, err := db.db.Exec(updateQuery, tag, repoPath)
+	if err != nil {
+		return fmt.Errorf("failed to update file tag: %v", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get affected rows: %v", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("no file found with path %s", repoPath)
+	}
+
+	return nil
+}
+func GetFileTag(repoPath util.RepoPath, c *util.Config) (string, error) {
+	db, err := NewSqldb(c)
+	if err != nil {
+		return "", err
+	}
+	defer db.Close()
+
+	// Query to get the tag for the specified file
+	query := `SELECT tag FROM file_operations WHERE destfile = ?`
+
+	var tag sql.NullString // Use sql.NullString to handle potentially NULL values
+	err = db.db.QueryRow(query, repoPath).Scan(&tag)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", fmt.Errorf("no file found with path %s", repoPath)
+		}
+		return "", fmt.Errorf("failed to query file tag: %v", err)
+	}
+
+	// Return the tag value (will be empty string if NULL)
+	return tag.String, nil
+}
 func GetFile(repoPath util.RepoPath, c *util.Config) (*FileOperation, error) {
 	db, err := NewSqldb(c)
 	if err != nil {
@@ -140,7 +193,7 @@ func GetFile(repoPath util.RepoPath, c *util.Config) (*FileOperation, error) {
 	}
 	defer db.Close()
 
-	query := `SELECT id, srcfile, destfile, isfile, revcount, sub, add_time, update_time FROM file_operations where destfile=?`
+	query := `SELECT id, srcfile, destfile, isfile, revcount, sub, tag, add_time, update_time FROM file_operations where destfile=?`
 
 	rows, err := db.db.Query(query, repoPath)
 	if err != nil {
@@ -150,9 +203,11 @@ func GetFile(repoPath util.RepoPath, c *util.Config) (*FileOperation, error) {
 
 	for rows.Next() {
 		var op FileOperation
-		if err := rows.Scan(&op.ID, &op.SrcFile, &op.DestFile, &op.IsFile, &op.RevCount, &op.Sub, &op.AddTime, &op.UpdateTime); err != nil {
+		var tag sql.NullString
+		if err := rows.Scan(&op.ID, &op.SrcFile, &op.DestFile, &op.IsFile, &op.RevCount, &op.Sub, &tag, &op.AddTime, &op.UpdateTime); err != nil {
 			return nil, fmt.Errorf("failed to scan file operation: %v", err)
 		} else {
+			op.Tag = tag.String
 			return &op, nil
 		}
 	}
@@ -178,7 +233,7 @@ func getFolderEntry(c *util.Config) ([]FileOperation, error) {
 	}
 	defer db.Close()
 
-	query := `SELECT id, srcfile, destfile, isfile, revcount, sub, add_time, update_time FROM file_operations where isfile=false`
+	query := `SELECT id, srcfile, destfile, isfile, revcount, sub, tag, add_time, update_time FROM file_operations where isfile=false`
 
 	rows, err := db.db.Query(query)
 	if err != nil {
@@ -189,10 +244,12 @@ func getFolderEntry(c *util.Config) ([]FileOperation, error) {
 	var operations []FileOperation
 	for rows.Next() {
 		var op FileOperation
-		err := rows.Scan(&op.ID, &op.SrcFile, &op.DestFile, &op.IsFile, &op.RevCount, &op.Sub, &op.AddTime, &op.UpdateTime)
+		var tag sql.NullString
+		err := rows.Scan(&op.ID, &op.SrcFile, &op.DestFile, &op.IsFile, &op.RevCount, &op.Sub, &tag, &op.AddTime, &op.UpdateTime)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan file operation: %v", err)
 		}
+		op.Tag = tag.String
 		operations = append(operations, op)
 	}
 
@@ -239,7 +296,7 @@ func GetAllOpt(c *util.Config) ([]FileOperation, error) {
 	}
 	defer db.Close()
 
-	query := `SELECT id, srcfile, destfile, isfile, revcount, sub, add_time, update_time FROM file_operations ORDER BY add_time DESC`
+	query := `SELECT id, srcfile, destfile, isfile, revcount, sub, tag, add_time, update_time FROM file_operations ORDER BY add_time DESC`
 
 	rows, err := db.db.Query(query)
 	if err != nil {
@@ -250,10 +307,12 @@ func GetAllOpt(c *util.Config) ([]FileOperation, error) {
 	var operations []FileOperation
 	for rows.Next() {
 		var op FileOperation
-		err := rows.Scan(&op.ID, &op.SrcFile, &op.DestFile, &op.IsFile, &op.RevCount, &op.Sub, &op.AddTime, &op.UpdateTime)
+		var tag sql.NullString
+		err := rows.Scan(&op.ID, &op.SrcFile, &op.DestFile, &op.IsFile, &op.RevCount, &op.Sub, &tag, &op.AddTime, &op.UpdateTime)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan file operation: %v", err)
 		}
+		op.Tag = tag.String
 		operations = append(operations, op)
 	}
 

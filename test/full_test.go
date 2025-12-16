@@ -91,6 +91,14 @@ func TestGitAddFile(t *testing.T) {
 		if err := cmd.BakupOptAdd(testFile, v, false, false, g); err != nil {
 			t.Errorf("Expected GitResultAdd, got %v", err)
 		}
+		if err := cmd.SetFileTag(v, "taga", g.C); err != nil {
+			t.Errorf("failed to set sql backup record %v", err)
+		}
+		if op, err := cmd.GetFile(v, g.C); err != nil {
+			t.Errorf("failed to get sql backup record %v", err)
+		} else if op.Tag != "taga" {
+			t.Errorf(">>> get sql backup record %v\n", op)
+		}
 	}
 
 	if err := os.WriteFile(testFile, []byte("test content xx"), 0644); err != nil {
@@ -114,8 +122,8 @@ func TestGitAddFile(t *testing.T) {
 func TestToSrc(t *testing.T) {
 	tmpDir := os.TempDir()
 	aaa := util.SrcPath(tmpDir).Repo().UnixStyle()
-	a,err:=util.RepoPath(aaa).ToSrc()
-	if err!=nil{
+	a, err := util.RepoPath(aaa).ToSrc()
+	if err != nil {
 		t.Errorf("Expected %v, got %v", tmpDir, err)
 	}
 	if a.String() != tmpDir {

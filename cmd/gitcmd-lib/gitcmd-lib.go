@@ -24,6 +24,7 @@ typedef struct {
 	int is_file;  // 1 for true, 0 for false
 	int revcount;
 	int sub;
+	char* tag;
 	char* add_time;
 	char* update_time;
 } FileOperationC;
@@ -201,11 +202,12 @@ func GetAllOptC(profilename *C.char) *C.FileOperationArray {
 		} else {
 			cOp.sub = 0
 		}
+		cOp.tag = C.CString(op.Tag)
 		cOp.add_time = C.CString(op.AddTime.Format("2006-01-02 15:04:05"))
 		cOp.update_time = C.CString(op.UpdateTime.Format("2006-01-02 15:04:05"))
 
 		// Check if any CString allocation failed
-		if cOp.src_file == nil || cOp.dest_file == nil || cOp.add_time == nil || cOp.update_time == nil {
+		if cOp.src_file == nil || cOp.dest_file == nil || cOp.tag == nil || cOp.add_time == nil || cOp.update_time == nil {
 			// Free already allocated strings and memory
 			for j := range i {
 				prevOp := (*C.FileOperationC)(unsafe.Pointer(uintptr(operationsPtr) + uintptr(j)*unsafe.Sizeof(C.FileOperationC{})))
@@ -214,6 +216,9 @@ func GetAllOptC(profilename *C.char) *C.FileOperationArray {
 				}
 				if prevOp.dest_file != nil {
 					C.free(unsafe.Pointer(prevOp.dest_file))
+				}
+				if prevOp.tag != nil {
+					C.free(unsafe.Pointer(prevOp.tag))
 				}
 				if prevOp.add_time != nil {
 					C.free(unsafe.Pointer(prevOp.add_time))
@@ -362,6 +367,9 @@ func FreeFileOperationArray(array *C.FileOperationArray) {
 			if op.dest_file != nil {
 				C.free(unsafe.Pointer(op.dest_file))
 			}
+			if op.tag != nil {
+				C.free(unsafe.Pointer(op.tag))
+			}
 			if op.add_time != nil {
 				C.free(unsafe.Pointer(op.add_time))
 			}
@@ -375,6 +383,45 @@ func FreeFileOperationArray(array *C.FileOperationArray) {
 
 	// Free the FileOperationArray struct itself
 	C.free(unsafe.Pointer(array))
+}
+
+// C-exportable wrapper for SetFileTag
+//
+//export SetFileTagC
+func SetFileTagC(profilename *C.char, filePath *C.char, tag *C.char) C.int {
+	if filePath == nil || tag == nil {
+		return -1
+	}
+	goFilePath := C.GoString(filePath)
+	goTag := C.GoString(tag)
+	g := cmd.NewGitCmd(C.GoString(profilename))
+
+	err := cmd.SetFileTag(util.RepoPath(goFilePath), goTag, g.C)
+	if err != nil {
+		fmt.Printf("SetFileTagC failed %v err=%v", goFilePath, err)
+		return -2
+	}
+	fmt.Printf("SetFileTagC success %v", goFilePath)
+	return 0
+}
+
+// C-exportable wrapper for GetFileTag
+//
+//export GetFileTagC
+func GetFileTagC(profilename *C.char, filePath *C.char) *C.char {
+	if filePath == nil {
+		return nil
+	}
+	goFilePath := C.GoString(filePath)
+	g := cmd.NewGitCmd(C.GoString(profilename))
+
+	tag, err := cmd.GetFileTag(util.RepoPath(goFilePath), g.C)
+	if err != nil {
+		fmt.Printf("GetFileTagC failed %v err=%v", goFilePath, err)
+		return nil
+	}
+	fmt.Printf("GetFileTagC success %v tag=%v", goFilePath, tag)
+	return C.CString(tag)
 }
 
 func main() {
