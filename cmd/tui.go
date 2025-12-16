@@ -13,6 +13,7 @@ var (
 	selectedStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#F7DC6F"))
 	cursorStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#EB984E"))
 	unselectedStyle = lipgloss.NewStyle()
+	titleStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("#2ECC71")).Bold(true)
 )
 
 type model struct {
@@ -20,6 +21,7 @@ type model struct {
 	choices  []string
 	selected string
 	done     bool
+	title    string
 }
 
 // type tickMsg struct{}
@@ -66,7 +68,11 @@ func (m model) View() string {
 		return ""
 	}
 
-	s := "Choose an option:\n\n"
+	title := "Choose an option:"
+	if m.title != "" {
+		title = m.title
+	}
+	s := titleStyle.Render(title) + "\n\n"
 
 	for i, choice := range m.choices {
 		cursor := " "
@@ -97,7 +103,7 @@ func ShowProfileOption() (string, error) {
 			if c == nil {
 				continue
 			}
-			ss := fmt.Sprintf("%-10s %50s", name, string(c.RepoDir))
+			ss := fmt.Sprintf("%-10s %-150s", name, string(c.RepoDir))
 			profileNames = append(profileNames, ss)
 		}
 	}
@@ -106,16 +112,21 @@ func ShowProfileOption() (string, error) {
 		return "default", nil
 	}
 
-	return ShowOption(profileNames)
+	return ShowOption(profileNames, "Select a profile:")
 }
 
-func ShowOption(options []string) (string, error) {
+func ShowOption(options []string, title ...string) (string, error) {
 	if len(options) == 0 {
 		return "", fmt.Errorf("no options provided")
 	}
 
 	initialModel := model{
 		choices: options,
+		title:   "Choose an option:",
+	}
+
+	if len(title) > 0 && title[0] != "" {
+		initialModel.title = title[0]
 	}
 
 	p := tea.NewProgram(initialModel)
