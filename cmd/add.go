@@ -33,8 +33,13 @@ var addCmd = &cobra.Command{
 	},
 }
 
-func run_list_file(filePath string, print bool) []util.GitChanges {
-	g := NewGitCmd("")
+func runListFile(filePath string, print bool) []util.GitChanges {
+	profile, err := ShowProfileOption()
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	g := NewGitCmd(profile)
 	if logs, err := g.GetFileLogAbs(filePath); err != nil {
 		fmt.Printf("Error log file %v: [%v]\n", filePath, err)
 		return []util.GitChanges{}
@@ -55,7 +60,7 @@ var logCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		filePath := args[0]
-		run_list_file(filePath, true)
+		runListFile(filePath, true)
 	},
 }
 
@@ -68,17 +73,22 @@ var getCmd = &cobra.Command{
 		filePath := args[0]
 		target := ""
 		commit := ""
-		g := NewGitCmd("")
+		profile, err := ShowProfileOption()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		g := NewGitCmd(profile)
 		if len(args) == 3 {
 			target = args[1]
 			commit = args[2]
 		} else {
-			run_list_file(filePath, true)
+			runListFile(filePath, true)
 			os.Exit(1)
 		}
 		// try to convert commit to int
 		if commit != "" {
-			logs := run_list_file(filePath, false)
+			logs := runListFile(filePath, false)
 			commit = strings.TrimSpace(commit)
 			if n, err := strconv.Atoi(commit); err == nil {
 				commit = logs[n-1].Commit
