@@ -93,7 +93,12 @@ func ShowProfileOption() (string, error) {
 	var profileNames []string
 	if config.Profile != nil {
 		for name := range config.Profile {
-			profileNames = append(profileNames, name)
+			c := config.GetProfile(name)
+			if c == nil {
+				continue
+			}
+			ss := fmt.Sprintf("%-10s %50s", name, string(c.RepoDir))
+			profileNames = append(profileNames, ss)
 		}
 	}
 
