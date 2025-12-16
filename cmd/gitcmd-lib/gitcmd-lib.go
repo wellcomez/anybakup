@@ -47,6 +47,8 @@ import (
 
 	"anybakup/cmd"
 	"anybakup/util"
+
+	"github.com/sirupsen/logrus"
 	// "fmt"
 )
 
@@ -403,10 +405,10 @@ func SetFileTagC(profilename *C.char, filePath *C.char, tag *C.char) C.int {
 
 	err := cmd.SetFileTag(util.RepoPath(goFilePath), goTag, g.C)
 	if err != nil {
-		fmt.Printf("SetFileTagC failed %v err=%v", goFilePath, err)
+		logrus.Errorf("SetFileTagC failed %v err=%v", goFilePath, err)
 		return -2
 	}
-	fmt.Printf("SetFileTagC success %v", goFilePath)
+	logrus.Infof("SetFileTagC success %v", goFilePath)
 	return 0
 }
 
