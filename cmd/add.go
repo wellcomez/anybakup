@@ -1,11 +1,12 @@
 package cmd
 
 import (
-	"anybakup/util"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
+
+	"anybakup/util"
 
 	"github.com/spf13/cobra"
 )
@@ -17,7 +18,12 @@ var addCmd = &cobra.Command{
 	Long:  `Add a file to the repository. This copies the file to the configured repository directory.`,
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		g := NewGitCmd("")
+		profile, err := ShowProfileOption()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		g := NewGitCmd(profile)
 		if ret := g.AddFile(args[0]); ret.Err != nil {
 			fmt.Printf("Error add file %v: [%v]\n", args[0], ret.Err)
 			os.Exit(1)
@@ -52,6 +58,7 @@ var logCmd = &cobra.Command{
 		run_list_file(filePath, true)
 	},
 }
+
 var getCmd = &cobra.Command{
 	Use:   "get [file] [target] [commit]",
 	Short: "get a file from the repository",
