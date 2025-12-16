@@ -22,7 +22,7 @@ type model struct {
 	done     bool
 }
 
-type tickMsg struct{}
+// type tickMsg struct{}
 
 func (m model) Init() tea.Cmd {
 	return nil
