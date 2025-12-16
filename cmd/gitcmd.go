@@ -55,6 +55,7 @@ type Result_git_add struct {
 	Dest   util.RepoPath
 	Err    error
 	Result util.GitAction
+	Files  []util.RepoPath
 }
 
 // AddFile adds a file to the git repository
@@ -104,6 +105,7 @@ func (g GitCmd) AddFile(arg string) (ret Result_git_add) {
 		}
 		if !isfile {
 			for _, f := range yes.Files {
+				ret.Files = append(ret.Files, f)
 				src, err := f.ToSrc()
 				if err != nil {
 					fmt.Printf("failed to add sql backup record %v", err)
@@ -114,6 +116,8 @@ func (g GitCmd) AddFile(arg string) (ret Result_git_add) {
 					fmt.Printf(">>> added to sql %v\n", f)
 				}
 			}
+		} else {
+			ret.Files = append(ret.Files, ret.Dest)
 		}
 	}
 	return

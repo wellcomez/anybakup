@@ -24,10 +24,21 @@ var addCmd = &cobra.Command{
 			return
 		}
 		g := NewGitCmd(profile)
+		tag, _ := GetTagOption(g.C)
 		if ret := g.AddFile(args[0]); ret.Err != nil {
 			fmt.Printf("Error add file %v: [%v]\n", args[0], ret.Err)
 			os.Exit(1)
 		} else {
+			if tag != "" {
+
+				for _, f := range ret.Files {
+					if err := SetFileTag(f, tag, g.C); err != nil {
+						fmt.Println(err)
+					} else {
+						fmt.Println(f.Sting(), "Set Tag", tag)
+					}
+				}
+			}
 			fmt.Printf("add %s to %s\n", args[0], ret.Dest)
 		}
 	},

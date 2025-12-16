@@ -5,6 +5,7 @@ import (
 
 	"anybakup/util"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -22,6 +23,14 @@ type model struct {
 	selected string
 	done     bool
 	title    string
+}
+
+type inputModel struct {
+	textInput textinput.Model
+	title     string
+	done      bool
+	value     string
+	err       error
 }
 
 // type tickMsg struct{}
@@ -63,6 +72,50 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m inputModel) Init() tea.Cmd {
+	return textinput.Blink
+}
+
+func (m inputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyCtrlC, tea.KeyEsc:
+			return m, tea.Quit
+		case tea.KeyEnter:
+			m.done = true
+			m.value = m.textInput.Value()
+			return m, tea.Quit
+		}
+
+	// We handle errors just like any other message
+	case error:
+		m.err = msg
+		return m, nil
+	}
+
+	m.textInput, cmd = m.textInput.Update(msg)
+	return m, cmd
+}
+
+func (m inputModel) View() string {
+	if m.done {
+		return ""
+	}
+
+	title := "Enter value:"
+	if m.title != "" {
+		title = m.title
+	}
+
+	titleText := titleStyle.Render(title)
+	inputField := m.textInput.View()
+
+	return fmt.Sprintf("%s\n\n%s\n\nPress Enter to confirm, Esc/Ctrl+C to quit", titleText, inputField)
+}
+
 func (m model) View() string {
 	if m.done {
 		return ""
@@ -90,6 +143,14 @@ func (m model) View() string {
 	s += "\nPress Enter to select, Esc to quit"
 
 	return s
+}
+
+func GetTagOption(c *util.Config) (string, error) {
+	tags, _ := GetAllTags(c)
+	for _, v := range tags {
+		fmt.Println(v)
+	}
+	return ShowInput("Enter tag name:", "tag name")
 }
 
 func ShowProfileOption() (string, error) {
@@ -145,4 +206,29 @@ func ShowOption(options []string, title ...string) (string, error) {
 	}
 
 	return modelInstance.selected, nil
+}
+
+func ShowInput(title string, placeholder string) (string, error) {
+	input := textinput.New()
+	input.Placeholder = placeholder
+	input.Focus()
+	input.Prompt = "> "
+
+	initialModel := inputModel{
+		textInput: input,
+		title:     title,
+	}
+
+	p := tea.NewProgram(initialModel)
+	m, err := p.Run()
+	if err != nil {
+		return "", err
+	}
+
+	modelInstance, ok := m.(inputModel)
+	if !ok {
+		return "", fmt.Errorf("unexpected model type")
+	}
+
+	return modelInstance.value, nil
 }
