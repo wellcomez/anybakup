@@ -308,7 +308,7 @@ const (
 	GitResultTypeError    GitAction = "error"
 )
 
-func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
+func (r GitRepo) GitAddFile(gitpath RepoPath, tag ...string) (GitResult, error) {
 	gitpath = gitpath.UnixStyle()
 	abspath := gitpath.ToAbs(r)
 	// gitfile := gitpath.Sting()
@@ -360,7 +360,12 @@ func (r GitRepo) GitAddFile(gitpath RepoPath) (GitResult, error) {
 		ret.Action = GitResultTypeNochange
 		return ret, nil
 	}
-	msg := fmt.Sprintf("%v %v", action, gitpath)
+	// Handle optional tag parameter
+	var tagStr string
+	if len(tag) > 0 && tag[0] != "" {
+		tagStr = fmt.Sprintf(" [%s]", tag[0])
+	}
+	msg := fmt.Sprintf("%v %v%v", action, gitpath, tagStr)
 	options := []git.StatusCode{git.Added, git.Modified}
 	ret.Files = state.NeedGitCommitFiles(options)
 	for _, k := range ret.Files {

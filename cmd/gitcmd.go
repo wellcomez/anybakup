@@ -59,7 +59,7 @@ type Result_git_add struct {
 }
 
 // AddFile adds a file to the git repository
-func (g GitCmd) AddFile(arg string) (ret Result_git_add) {
+func (g GitCmd) AddFile(arg string, tag ...string ) (ret Result_git_add) {
 	file, err := filepath.Abs(arg)
 	if err != nil {
 		ret.Err = err

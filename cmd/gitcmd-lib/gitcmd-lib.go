@@ -280,6 +280,26 @@ func AddFileC(profilename *C.char, filePath *C.char) C.int {
 	return 0
 }
 
+// C-exportable wrapper for AddFile with tag support
+//
+//export AddFileCWithTag
+func AddFileCWithTag(profilename *C.char, filePath *C.char, tag *C.char) C.int {
+	if filePath == nil {
+		return 3
+	}
+	goFilePath := C.GoString(filePath)
+	goTag := C.GoString(tag)
+	g := cmd.NewGitCmd(C.GoString(profilename))
+	result := g.AddFile(goFilePath,goTag)
+	if result.Err != nil {
+		return 2
+	}
+	if result.Result == util.GitResultTypeNochange {
+		return 1
+	}
+	return 0
+}
+
 // C-exportable wrapper for GitInitC
 //
 //export GitInitC
