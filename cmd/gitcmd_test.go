@@ -134,7 +134,51 @@ func TestAddFile(t *testing.T) {
 	}
 
 }
+func TestAddDirTag(t *testing.T) {
+	_, c, cleanup := setupTestEnv(t)
+	tmpDir, err := os.MkdirTemp("", "anybakup-cmd-test-*")
+	if err != nil {
+		t.Error("temp file error", err)
+	}
+	defer os.RemoveAll(tmpDir)
+	defer cleanup()
 
+	g := NewGitCmd("")
+	g.C = c
+	test1txt := filepath.Join(tmpDir, "1.txt")
+	if err := os.WriteFile(test1txt, []byte("xxx"), 0755); err != nil {
+		t.Error("write file error", err)
+	}
+
+	test2txt := filepath.Join(tmpDir, "2.txt")
+	if err := os.WriteFile(test2txt, []byte("xxx"), 0755); err != nil {
+		t.Error("write file error", err)
+	}
+	dira := filepath.Join(tmpDir, "a")
+	if err := os.MkdirAll(dira, 0755); err != nil {
+		t.Error("mkdir error", err)
+	}
+
+	ret := g.AddFile(tmpDir, "tag")
+	if ret.Err != nil {
+		t.Error("add file error", ret.Err)
+	}
+	if len(ret.Files) == 0 {
+		t.Error("add file error", ret.Err)
+	}
+	if tag,err:=GetFileTag(util.SrcPath(tmpDir).Repo(),g.C);err!=nil{
+		t.Error("add file error", ret.Err)
+	}else if tag!="tag"{
+		t.Error("add file error", ret.Err)
+	}
+	for _, f := range ret.Files {
+		if tag, err := GetFileTag(f, g.C); err != nil {
+			t.Error("add file error", ret.Err)
+		} else if tag != "tag" {
+			t.Error("add file error", ret.Err)
+		}
+	}
+}
 func TestAddDir(t *testing.T) {
 	_, c, cleanup := setupTestEnv(t)
 	tmpDir, err := os.MkdirTemp("", "anybakup-cmd-test-*")

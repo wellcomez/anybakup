@@ -59,7 +59,11 @@ type Result_git_add struct {
 }
 
 // AddFile adds a file to the git repository
-func (g GitCmd) AddFile(arg string, tag ...string ) (ret Result_git_add) {
+func (g GitCmd) AddFile(arg string, tag ...string) (ret Result_git_add) {
+	gitag := ""
+	if len(tag) > 0 {
+		gitag = tag[0]
+	}
 	file, err := filepath.Abs(arg)
 	if err != nil {
 		ret.Err = err
@@ -103,6 +107,9 @@ func (g GitCmd) AddFile(arg string, tag ...string ) (ret Result_git_add) {
 		if err := BakupOptAdd(file, ret.Dest, isfile, false, g); err != nil {
 			fmt.Printf("failed to add sql backup record %v", err)
 		}
+		if gitag != "" {
+			SetFileTag(ret.Dest, gitag, g.C)
+		}
 		if !isfile {
 			for _, f := range yes.Files {
 				ret.Files = append(ret.Files, f)
@@ -113,6 +120,9 @@ func (g GitCmd) AddFile(arg string, tag ...string ) (ret Result_git_add) {
 				if err := BakupOptAdd(src.String(), f, true, true, g); err != nil {
 					fmt.Printf("failed to add sql backup record %v", err)
 				} else {
+					if gitag != "" {
+						SetFileTag(f, gitag, g.C)
+					}
 					fmt.Printf(">>> added to sql %v\n", f)
 				}
 			}

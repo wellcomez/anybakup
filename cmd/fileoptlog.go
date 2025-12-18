@@ -136,6 +136,9 @@ func BakupOptAdd(srcFile string, destFile util.RepoPath, isFile bool, sub bool, 
 	return nil
 }
 func SetFileTag(repoPath util.RepoPath, tag string, c *util.Config) error {
+	if tag == "" {
+		return nil
+	}
 	db, err := NewSqldb(c)
 	if err != nil {
 		return err
