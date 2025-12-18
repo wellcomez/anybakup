@@ -166,15 +166,33 @@ func TestAddDirTag(t *testing.T) {
 	if len(ret.Files) == 0 {
 		t.Error("add file error", ret.Err)
 	}
-	if tag,err:=GetFileTag(util.SrcPath(tmpDir).Repo(),g.C);err!=nil{
+	srcDir := util.SrcPath(tmpDir).Repo()
+	if tag, err := GetFileTag(srcDir, g.C); err != nil {
 		t.Error("add file error", ret.Err)
-	}else if tag!="tag"{
+	} else if tag != "tag" {
 		t.Error("add file error", ret.Err)
 	}
 	for _, f := range ret.Files {
 		if tag, err := GetFileTag(f, g.C); err != nil {
 			t.Error("add file error", ret.Err)
 		} else if tag != "tag" {
+			t.Error("add file error", ret.Err)
+		}
+	}
+	const tagb = "bbbb"
+	err = SetFileTag(srcDir, tagb, g.C)
+	if err != nil {
+		t.Error("add file error", ret.Err)
+	}
+	if tag, err := GetFileTag(srcDir, g.C); err != nil {
+		t.Error("add file error", ret.Err)
+	} else if tag != tagb {
+		t.Error("add file error", ret.Err)
+	}
+	for _, f := range ret.Files {
+		if tag, err := GetFileTag(f, g.C); err != nil {
+			t.Error("add file error", ret.Err)
+		} else if tag != tagb {
 			t.Error("add file error", ret.Err)
 		}
 	}

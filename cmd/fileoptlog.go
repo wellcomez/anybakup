@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"anybakup/util"
-
 	_ "modernc.org/sqlite"
 )
 
@@ -136,16 +136,56 @@ func BakupOptAdd(srcFile string, destFile util.RepoPath, isFile bool, sub bool, 
 	return nil
 }
 func SetFileTag(repoPath util.RepoPath, tag string, c *util.Config) error {
-	if tag == "" {
-		return nil
-	}
 	db, err := NewSqldb(c)
 	if err != nil {
 		return err
 	}
+	entry, err := db_query_getfile(db, repoPath)
+	if entry == nil {
+		return fmt.Errorf("SetFlag %s not entry err=%v", tag, err)
+	}
 	defer db.Close()
+	if entry != nil {
+		if entry.Tag == tag {
+			return nil
+		}
+		var filetoupdate []util.RepoPath = make([]util.RepoPath, 0)
+		if !entry.IsFile {
+			//select  * from file_operations  , destfile  has prefix repoPath
+			rows, err := db.db.Query("select destfile from file_operations where destfile like ?", repoPath.Sting()+"%")
+			if err != nil {
+				return fmt.Errorf("failed to query file operations: %v", err)
+			}
+			defer rows.Close()
+
+			for rows.Next() {
+				var destfile string
+				if err := rows.Scan(&destfile); err != nil {
+					return fmt.Errorf("failed to scan file operation: %v", err)
+				} else {
+					if repoPath.Sting() == destfile {
+						continue
+					}
+					if !strings.HasPrefix(destfile, repoPath.Sting()) {
+						continue
+					}
+					filetoupdate = append(filetoupdate, util.RepoPath(destfile))
+
+				}
+			}
+		}
+		for _, f := range filetoupdate {
+			if err := db_update_tag(db, tag, f); err != nil {
+				return fmt.Errorf("SetFlag %s not entry err=%v", tag, err)
+			}
+		}
+	}
 
 	// Update the tag for the specified file
+	return db_update_tag(db, tag, repoPath)
+}
+
+func db_update_tag(db *sqldb, tag string, repoPath util.RepoPath) error {
 	updateQuery := `
 	UPDATE file_operations
 	SET tag = ?
@@ -196,6 +236,10 @@ func GetFile(repoPath util.RepoPath, c *util.Config) (*FileOperation, error) {
 	}
 	defer db.Close()
 
+	return db_query_getfile(db, repoPath)
+}
+
+func db_query_getfile(db *sqldb, repoPath util.RepoPath) (*FileOperation, error) {
 	query := `SELECT id, srcfile, destfile, isfile, revcount, sub, tag, add_time, update_time FROM file_operations where destfile=?`
 
 	rows, err := db.db.Query(query, repoPath)
